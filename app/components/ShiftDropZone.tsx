@@ -135,20 +135,6 @@ export default function ShiftDropZone({
               ? `${HOURS_CONFIG.EVENING_EXTENDED.start}-${HOURS_CONFIG.EVENING_EXTENDED.end}`
               : `${HOURS_CONFIG.EVENING.start}-${HOURS_CONFIG.EVENING.end}`}
           </div>
-          {(minCoaches !== undefined || maxCoaches !== undefined) && (
-            <div
-              className={`text-[9px] px-1.5 py-0.5 rounded ${
-                shifts.length < (minCoaches || 1)
-                  ? 'bg-red-100 text-red-600 font-medium'
-                  : shifts.length >= (maxCoaches || 2)
-                  ? 'bg-green-100 text-green-600'
-                  : 'bg-amber-100 text-amber-600'
-              }`}
-              title={`需要 ${minCoaches || 1}-${maxCoaches || 2} 人`}
-            >
-              {shifts.length}/{minCoaches !== maxCoaches ? `${minCoaches || 1}-${maxCoaches || 2}` : (maxCoaches || 2)}
-            </div>
-          )}
         </div>
       </div>
       <div className="space-y-1.5 min-h-[30px]">
