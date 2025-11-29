@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Store {
+  id        String        @id @default(cuid())
+  name      String
+  // 班次配置存储为JSON数组
+  // 格式: [{ id: "shift1", name: "早班", start: "10:00", end: "20:00", daysOfWeek: [1,2,3,4,5] }]
+  // daysOfWeek: 0=周日, 1=周一, ..., 6=周六。如果为空或null，表示全周适用
+  shifts    Json?
+  archived  Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  coaches   CoachStore[]
+  schedules Schedule[]
+
+  @@map("stores")
+}
+
+model Coach {
+  id              String        @id @default(cuid())
+  name            String
+  color           String
+  avatar          String
+  archived        Boolean       @default(false)
+  // 雇佣类型: FULL_TIME (全职) 或 PART_TIME (兼职)
+  employmentType  String        @default("FULL_TIME")
+  // 可用性配置 - 每天的班次可用性
+  // 格式: { "0": { "canWorkMorning": true, "canWorkEvening": false }, "1": { ... } }
+  // 0=周日, 1=周一, ..., 6=周六
+  weekSchedule    Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  schedules       Schedule[]
+  stores          CoachStore[]
+
+  @@map("coaches")
+}
+
+model CoachStore {
+  id        String   @id @default(cuid())
+  coachId   String
+  storeId   String
+  isPrimary Boolean  @default(false) // 是否为主要门店
+  coach     Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([coachId, storeId])
+  @@map("coach_stores")
+  @@index([coachId])
+  @@index([storeId])
+}
+
+model Schedule {
+  id        String   @id @default(cuid())
+  dateStr   String   // ISO Format YYYY-MM-DD
+  shiftId   String   // 班次ID，对应门店shifts中的id
+  shiftName String   // 班次名称（冗余存储，便于查询）
+  coachId   String
+  storeId   String
+  coach     Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("schedules")
+  @@index([dateStr])
+  @@index([coachId])
+  @@index([storeId])
+  @@index([dateStr, coachId])
+}
