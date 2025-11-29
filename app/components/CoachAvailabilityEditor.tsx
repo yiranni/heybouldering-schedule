@@ -184,13 +184,24 @@ export default function CoachAvailabilityEditor({ coach, onUpdate }: CoachAvaila
       <div className="space-y-1.5">
         {DAYS_OF_WEEK.map((day) => {
           const dayConfig = weekSchedule[day.value];
+
+          // 过滤出适用于当天的班次
+          const applicableShifts = allShifts.filter(shift => {
+            // 如果 daysOfWeek 为空或 null，则全周适用
+            if (!shift.daysOfWeek || shift.daysOfWeek.length === 0) {
+              return true;
+            }
+            // 否则检查今天是否在适用日期中
+            return shift.daysOfWeek.includes(day.value);
+          });
+
           const hasAnyShift = dayConfig && Object.values(dayConfig).some(val => val === true);
 
           return (
             <div key={day.value} className="flex items-center gap-2">
               <span className="text-xs text-slate-600 w-12 flex-shrink-0">{day.label}</span>
               <div className="flex gap-1 flex-wrap">
-                {allShifts.map(shift => {
+                {applicableShifts.map(shift => {
                   const isActive = dayConfig?.[shift.id] === true;
                   const colors = getShiftColor(shift.id);
 
@@ -210,7 +221,10 @@ export default function CoachAvailabilityEditor({ coach, onUpdate }: CoachAvaila
                   );
                 })}
               </div>
-              {!hasAnyShift && (
+              {applicableShifts.length === 0 && (
+                <span className="text-[10px] text-slate-400 ml-auto">本店无班次</span>
+              )}
+              {applicableShifts.length > 0 && !hasAnyShift && (
                 <span className="text-[10px] text-slate-400 ml-auto">休息</span>
               )}
             </div>
