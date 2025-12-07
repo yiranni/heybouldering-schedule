@@ -9,6 +9,7 @@ import {
   Save,
   Download,
   Filter,
+  Image as ImageIcon,
 } from "lucide-react";
 import { ShiftType, ScheduleItem, WorkloadStats } from "./types";
 import { addDays, getWeekDays, getMonthDays, getDayOfWeek } from "./utils/date";
@@ -24,6 +25,7 @@ import WeeklyStats from "./components/WeeklyStats";
 import ScheduleCalendar from "./components/ScheduleCalendar";
 import ShiftModal from "./components/ShiftModal";
 import CollapsiblePanel from "./components/CollapsiblePanel";
+import ExportImageModal from "./components/ExportImageModal";
 
 export default function RockGymScheduler() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -86,6 +88,7 @@ export default function RockGymScheduler() {
   } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCoachIds, setSelectedCoachIds] = useState<string[]>([]); // 空数组表示显示所有教练
+  const [showExportImageModal, setShowExportImageModal] = useState(false);
 
   // Load schedules from database when they change
   useEffect(() => {
@@ -498,10 +501,18 @@ export default function RockGymScheduler() {
             <button
               onClick={handleExportSchedule}
               className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-md font-medium transition-all shadow-lg active:scale-95"
-              title="导出排班表"
+              title="导出文本"
             >
               <Download className="w-4 h-4" />
-              导出
+              导出文本
+            </button>
+            <button
+              onClick={() => setShowExportImageModal(true)}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-md font-medium transition-all shadow-lg active:scale-95"
+              title="导出图片"
+            >
+              <ImageIcon className="w-4 h-4" />
+              导出图片
             </button>
           </div>
         </div>
@@ -601,6 +612,15 @@ export default function RockGymScheduler() {
         schedules={schedules}
         onClose={() => setSelectedSlot(null)}
         onAddShift={handleAddShift}
+      />
+
+      <ExportImageModal
+        isOpen={showExportImageModal}
+        onClose={() => setShowExportImageModal(false)}
+        weekDays={weekDays}
+        schedules={schedules}
+        coaches={coaches}
+        stores={stores}
       />
     </div>
   );
