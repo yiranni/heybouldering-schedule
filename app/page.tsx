@@ -12,6 +12,8 @@ import {
   Image as ImageIcon,
   ChevronDown,
   FileText,
+  CalendarDays,
+  CalendarRange,
 } from "lucide-react";
 import { ShiftType, ScheduleItem, WorkloadStats } from "./types";
 import { addDays, getWeekDays, getMonthDays, getDayOfWeek } from "./utils/date";
@@ -28,6 +30,7 @@ import ScheduleCalendar from "./components/ScheduleCalendar";
 import ShiftModal from "./components/ShiftModal";
 import CollapsiblePanel from "./components/CollapsiblePanel";
 import ExportImageModal from "./components/ExportImageModal";
+import DateRangeModal from "./components/DateRangeModal";
 
 export default function RockGymScheduler() {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -81,6 +84,7 @@ export default function RockGymScheduler() {
 
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [selectedSlot, setSelectedSlot] = useState<{
     date: string;
     type: ShiftType;
@@ -92,14 +96,36 @@ export default function RockGymScheduler() {
   const [selectedCoachIds, setSelectedCoachIds] = useState<string[]>([]); // 空数组表示显示所有教练
   const [showExportImageModal, setShowExportImageModal] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [showScheduleDropdown, setShowScheduleDropdown] = useState(false);
+  const [showDateRangeModal, setShowDateRangeModal] = useState(false);
 
-  // Load schedules from database when they change
+  // Load schedules from database - merge with existing schedules to avoid losing unsaved changes
   useEffect(() => {
     if (dbSchedules.length > 0) {
-      setSchedules(dbSchedules);
-      setHasUnsavedChanges(false);
+      setSchedules((prev) => {
+        // If we have unsaved changes, merge db schedules with local changes
+        if (hasUnsavedChanges && !isInitialLoad) {
+          // Create a map of existing schedules by date
+          const localScheduleMap = new Map(prev.map(s => [`${s.dateStr}-${s.storeId}-${s.shiftId || s.shiftType}-${s.coachId}`, s]));
+          // Merge: keep local changes, add db schedules that don't exist locally
+          const merged = [...prev];
+          dbSchedules.forEach(dbSchedule => {
+            const key = `${dbSchedule.dateStr}-${dbSchedule.storeId}-${dbSchedule.shiftId || dbSchedule.shiftType}-${dbSchedule.coachId}`;
+            if (!localScheduleMap.has(key)) {
+              merged.push(dbSchedule);
+            }
+          });
+          return merged;
+        }
+        // Otherwise, use db schedules
+        setIsInitialLoad(false);
+        return dbSchedules;
+      });
+      if (isInitialLoad) {
+        setHasUnsavedChanges(false);
+      }
     }
-  }, [dbSchedules]);
+  }, [dbSchedules, hasUnsavedChanges, isInitialLoad]);
 
   const generateSchedule = () => {
     const newSchedule = generateWeekSchedule(coaches, stores, weekDays);
@@ -110,22 +136,78 @@ export default function RockGymScheduler() {
     setHasUnsavedChanges(true);
   };
 
+  // 为指定日期范围生成排班（只生成未排班的日期）
+  const generateScheduleForRange = (dateRange: string[]) => {
+    // 找出还没有排班的日期
+    const scheduledDates = new Set(schedules.map(s => s.dateStr));
+    const unscheduledDates = dateRange.filter(date => !scheduledDates.has(date));
+
+    if (unscheduledDates.length === 0) {
+      alert('所选日期范围内的班次已全部排满');
+      return;
+    }
+
+    const newSchedule = generateWeekSchedule(coaches, stores, unscheduledDates);
+    setSchedules((prev) => [...prev, ...newSchedule]);
+    setHasUnsavedChanges(true);
+  };
+
+  // 生成本周排班
+  const handleGenerateThisWeek = () => {
+    generateScheduleForRange(weekDays);
+    setShowScheduleDropdown(false);
+  };
+
+  // 生成本月排班
+  const handleGenerateThisMonth = () => {
+    generateScheduleForRange(monthDays);
+    setShowScheduleDropdown(false);
+  };
+
+  // 打开自定义日期范围选择
+  const handleGenerateCustomRange = () => {
+    setShowScheduleDropdown(false);
+    setShowDateRangeModal(true);
+  };
+
+  // 处理自定义日期范围生成排班
+  const handleCustomRangeConfirm = (startDate: string, endDate: string) => {
+    // 生成日期范围数组
+    const dateRange: string[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    let currentDate = new Date(start);
+    while (currentDate <= end) {
+      dateRange.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    generateScheduleForRange(dateRange);
+  };
+
   const handleSaveSchedule = async () => {
     try {
       setIsSaving(true);
-      // Get only the schedules for the current week
-      const weekSchedules = schedules.filter((s) =>
-        weekDays.includes(s.dateStr)
+      // Save all schedules in the current date range
+      const schedulesToSave = schedules.filter((s) =>
+        s.dateStr >= fetchDateRange.start && s.dateStr <= fetchDateRange.end
       );
+
+      if (schedulesToSave.length === 0) {
+        alert("没有需要保存的排班");
+        return;
+      }
+
       console.log('Saving schedules:', {
-        weekDays,
-        weekSchedulesCount: weekSchedules.length,
-        weekSchedulesDates: weekSchedules.map(s => s.dateStr).sort(),
-        startDate: weekDays[0],
-        endDate: weekDays[weekDays.length - 1],
+        dateRange: fetchDateRange,
+        schedulesCount: schedulesToSave.length,
+        dates: [...new Set(schedulesToSave.map(s => s.dateStr))].sort(),
       });
-      await saveSchedules(weekSchedules, weekDays[0], weekDays[weekDays.length - 1]);
+
+      await saveSchedules(schedulesToSave, fetchDateRange.start, fetchDateRange.end);
       setHasUnsavedChanges(false);
+      setIsInitialLoad(false);
     } catch (error) {
       console.error("Failed to save schedules:", error);
       alert("保存排班失败，请重试");
@@ -484,13 +566,42 @@ export default function RockGymScheduler() {
           </div>
 
           <div className="flex gap-2">
-            <button
-              onClick={generateSchedule}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-md font-medium transition-all shadow-lg active:scale-95"
-            >
-              <RefreshCw className="w-4 h-4" />
-              开始排班
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowScheduleDropdown(!showScheduleDropdown)}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-md font-medium transition-all shadow-lg active:scale-95"
+              >
+                <RefreshCw className="w-4 h-4" />
+                开始排班
+                <ChevronDown className="w-4 h-4" />
+              </button>
+
+              {showScheduleDropdown && (
+                <div className="absolute left-0 mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-1 min-w-[160px] z-50">
+                  <button
+                    onClick={handleGenerateThisWeek}
+                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    本周
+                  </button>
+                  <button
+                    onClick={handleGenerateThisMonth}
+                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+                  >
+                    <CalendarDays className="w-4 h-4" />
+                    本月
+                  </button>
+                  <button
+                    onClick={handleGenerateCustomRange}
+                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+                  >
+                    <CalendarRange className="w-4 h-4" />
+                    自定义范围
+                  </button>
+                </div>
+              )}
+            </div>
             {hasUnsavedChanges && (
               <button
                 onClick={handleSaveSchedule}
@@ -644,6 +755,12 @@ export default function RockGymScheduler() {
         schedules={schedules}
         coaches={coaches}
         stores={stores}
+      />
+
+      <DateRangeModal
+        isOpen={showDateRangeModal}
+        onClose={() => setShowDateRangeModal(false)}
+        onConfirm={handleCustomRangeConfirm}
       />
     </div>
   );
