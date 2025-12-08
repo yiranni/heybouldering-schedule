@@ -10,6 +10,8 @@ import {
   Download,
   Filter,
   Image as ImageIcon,
+  ChevronDown,
+  FileText,
 } from "lucide-react";
 import { ShiftType, ScheduleItem, WorkloadStats } from "./types";
 import { addDays, getWeekDays, getMonthDays, getDayOfWeek } from "./utils/date";
@@ -89,6 +91,7 @@ export default function RockGymScheduler() {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedCoachIds, setSelectedCoachIds] = useState<string[]>([]); // 空数组表示显示所有教练
   const [showExportImageModal, setShowExportImageModal] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
 
   // Load schedules from database when they change
   useEffect(() => {
@@ -498,22 +501,42 @@ export default function RockGymScheduler() {
                 {isSaving ? "保存中..." : "保存排班"}
               </button>
             )}
-            <button
-              onClick={handleExportSchedule}
-              className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-md font-medium transition-all shadow-lg active:scale-95"
-              title="导出文本"
-            >
-              <Download className="w-4 h-4" />
-              导出文本
-            </button>
-            <button
-              onClick={() => setShowExportImageModal(true)}
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-md font-medium transition-all shadow-lg active:scale-95"
-              title="导出图片"
-            >
-              <ImageIcon className="w-4 h-4" />
-              导出图片
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowExportDropdown(!showExportDropdown)}
+                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-md font-medium transition-all shadow-lg active:scale-95"
+                title="导出"
+              >
+                <Download className="w-4 h-4" />
+                导出
+                <ChevronDown className="w-4 h-4" />
+              </button>
+
+              {showExportDropdown && (
+                <div className="absolute right-0 mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-1 min-w-[160px] z-50">
+                  <button
+                    onClick={() => {
+                      setShowExportImageModal(true);
+                      setShowExportDropdown(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                    导出为图片
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportSchedule();
+                      setShowExportDropdown(false);
+                    }}
+                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+                  >
+                    <FileText className="w-4 h-4" />
+                    导出为文本
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
