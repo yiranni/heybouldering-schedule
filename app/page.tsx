@@ -136,19 +136,16 @@ export default function RockGymScheduler() {
     setHasUnsavedChanges(true);
   };
 
-  // 为指定日期范围生成排班（只生成未排班的日期）
+  // 为指定日期范围生成排班（会覆盖已有排班）
   const generateScheduleForRange = (dateRange: string[]) => {
-    // 找出还没有排班的日期
-    const scheduledDates = new Set(schedules.map(s => s.dateStr));
-    const unscheduledDates = dateRange.filter(date => !scheduledDates.has(date));
-
-    if (unscheduledDates.length === 0) {
-      alert('所选日期范围内的班次已全部排满');
-      return;
-    }
-
-    const newSchedule = generateWeekSchedule(coaches, stores, unscheduledDates);
-    setSchedules((prev) => [...prev, ...newSchedule]);
+    // 生成新的排班
+    const newSchedule = generateWeekSchedule(coaches, stores, dateRange);
+    
+    // 移除该日期范围内的旧排班，保留其他日期的排班
+    setSchedules((prev) => {
+      const filtered = prev.filter((s) => !dateRange.includes(s.dateStr));
+      return [...filtered, ...newSchedule];
+    });
     setHasUnsavedChanges(true);
   };
 
