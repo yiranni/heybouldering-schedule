@@ -345,7 +345,7 @@ export default function ExportImageModal({
 
             {/* Footer */}
             <div className="mt-6 text-center text-xs text-slate-500">
-              由嘿抱排班系统生成 · {new Date().toLocaleDateString('zh-CN')}
+              由嘿抱工作后台生成 · {new Date().toLocaleDateString('zh-CN')}
             </div>
           </div>
         </div>

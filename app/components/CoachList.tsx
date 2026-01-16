@@ -171,7 +171,7 @@ export default function CoachList({ coaches, stores, onDragStart, onDeleteCoach,
 
   return (
     <CollapsiblePanel
-      title="团队成员 (拖拽排班)"
+      title="团队成员"
       icon={<Users className="w-4 h-4" />}
       defaultOpen={true}
     >

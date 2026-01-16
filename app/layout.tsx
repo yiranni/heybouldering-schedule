@@ -4,7 +4,7 @@ import './globals.css'
 import AuthGuard from './components/AuthGuard'
 
 export const metadata: Metadata = {
-  title: '嘿抱排班系统',
+  title: '嘿抱工作后台',
   description: '专业的排班管理系统',
 }
 

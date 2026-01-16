@@ -27,21 +27,22 @@ model Store {
 }
 
 model Coach {
-  id              String        @id @default(cuid())
+  id              String         @id @default(cuid())
   name            String
   color           String
   avatar          String
-  archived        Boolean       @default(false)
+  archived        Boolean        @default(false)
   // 雇佣类型: FULL_TIME (全职) 或 PART_TIME (兼职)
-  employmentType  String        @default("FULL_TIME")
+  employmentType  String         @default("FULL_TIME")
   // 可用性配置 - 每天的班次可用性
   // 格式: { "0": { "canWorkMorning": true, "canWorkEvening": false }, "1": { ... } }
   // 0=周日, 1=周一, ..., 6=周六
   weekSchedule    Json?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   schedules       Schedule[]
   stores          CoachStore[]
+  lessonRecords   LessonRecord[]
 
   @@map("coaches")
 }
@@ -79,4 +80,35 @@ model Schedule {
   @@index([coachId])
   @@index([storeId])
   @@index([dateStr, coachId])
+}
+
+// 课程类型
+model LessonType {
+  id            String         @id @default(cuid())
+  name          String         // 课程名称
+  commission    Float          // 提成价格
+  archived      Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  lessonRecords LessonRecord[]
+
+  @@map("lesson_types")
+}
+
+// 课程记录
+model LessonRecord {
+  id            String     @id @default(cuid())
+  dateStr       String     // ISO Format YYYY-MM-DD
+  lessonTypeId  String
+  coachId       String
+  note          String?    // 备注
+  lessonType    LessonType @relation(fields: [lessonTypeId], references: [id], onDelete: Cascade)
+  coach         Coach      @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@map("lesson_records")
+  @@index([dateStr])
+  @@index([coachId])
+  @@index([lessonTypeId])
 }

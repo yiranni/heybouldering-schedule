@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   Calendar,
   RefreshCw,
@@ -15,6 +15,7 @@ import {
   CalendarDays,
   CalendarRange,
 } from "lucide-react";
+import Link from "next/link";
 import { ShiftType, ScheduleItem, WorkloadStats } from "./types";
 import { addDays, getWeekDays, getMonthDays, getDayOfWeek } from "./utils/date";
 import { generateWeekSchedule } from "./utils/schedule";
@@ -98,6 +99,20 @@ export default function RockGymScheduler() {
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [showScheduleDropdown, setShowScheduleDropdown] = useState(false);
   const [showDateRangeModal, setShowDateRangeModal] = useState(false);
+  const [showNavDropdown, setShowNavDropdown] = useState(false);
+  const navDropdownRef = useRef<HTMLDivElement>(null);
+
+  // 点击外部关闭导航下拉菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (navDropdownRef.current && !navDropdownRef.current.contains(event.target as Node)) {
+        setShowNavDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Load schedules from database - merge with existing schedules to avoid losing unsaved changes
   useEffect(() => {
@@ -539,8 +554,34 @@ export default function RockGymScheduler() {
             <div className="bg-emerald-500 p-2 rounded-lg">
               <Calendar className="w-6 h-6 text-white" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">嘿抱排班系统</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold tracking-tight">嘿抱工作后台</h1>
+              <span className="text-slate-400">·</span>
+              <div className="relative" ref={navDropdownRef}>
+                <button
+                  onClick={() => setShowNavDropdown(!showNavDropdown)}
+                  className="flex items-center gap-1 text-lg font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+                >
+                  排班
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showNavDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                {showNavDropdown && (
+                  <div className="absolute top-full left-0 mt-2 bg-slate-800 rounded-lg shadow-xl border border-slate-700 py-1 min-w-[120px] z-50">
+                    <Link
+                      href="/"
+                      className="block px-4 py-2 text-sm text-emerald-400 bg-slate-700/50"
+                    >
+                      排班
+                    </Link>
+                    <Link
+                      href="/lessons"
+                      className="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+                    >
+                      课程统计
+                    </Link>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

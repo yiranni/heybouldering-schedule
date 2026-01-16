@@ -92,7 +92,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
               <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500 rounded-full mb-4">
                 <Lock className="w-8 h-8 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-slate-800 mb-2">嘿抱排班系统</h1>
+              <h1 className="text-2xl font-bold text-slate-800 mb-2">嘿抱工作后台</h1>
               <p className="text-slate-500 text-sm">请登录以继续</p>
             </div>
 

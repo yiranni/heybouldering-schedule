@@ -1,4 +1,4 @@
-# 嘿抱排班系统
+# 嘿抱工作后台
 
 专业的教练排班管理系统，基于 Next.js 14、React 18、TypeScript、Tailwind CSS 和 PostgreSQL 构建。
 

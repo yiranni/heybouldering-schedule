@@ -76,3 +76,38 @@ export type WorkloadStats = {
   daysWorked: Set<string>;
   extended?: number; // 兼容旧代码
 };
+
+// 课程类型
+export type LessonType = {
+  id: string;
+  name: string;
+  commission: number; // 提成价格
+};
+
+// 课程记录
+export type LessonRecord = {
+  id: string;
+  dateStr: string; // ISO Format YYYY-MM-DD
+  lessonTypeId: string;
+  coachId: string;
+  note?: string | null;
+  lessonType?: {
+    id: string;
+    name: string;
+    commission: number;
+  };
+  coach?: {
+    id: string;
+    name: string;
+    color: string;
+    avatar: string;
+  };
+};
+
+// 课程记录筛选条件
+export type LessonRecordFilters = {
+  startDate?: string;
+  endDate?: string;
+  coachId?: string;
+  lessonTypeId?: string;
+};
