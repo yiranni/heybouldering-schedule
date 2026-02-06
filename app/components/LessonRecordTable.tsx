@@ -8,8 +8,10 @@ import {
   X,
   Calendar,
   ChevronDown,
+  ChevronUp,
   Filter,
   Search,
+  Users,
 } from 'lucide-react';
 import { LessonRecord, LessonRecordFilters, Coach, LessonType } from '../types';
 
@@ -18,6 +20,7 @@ type EditingRecord = {
   dateStr: string;
   lessonTypeId: string;
   coachId: string;
+  studentCount: number;
   note: string;
 };
 
@@ -52,6 +55,9 @@ export default function LessonRecordTable({
   const [showFilterCoachDropdown, setShowFilterCoachDropdown] = useState(false);
   const [showFilterLessonTypeDropdown, setShowFilterLessonTypeDropdown] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [coachSearchQuery, setCoachSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // 默认降序（最新在前）
+  const coachSearchInputRef = useRef<HTMLInputElement>(null);
 
   const datePickerRef = useRef<HTMLDivElement>(null);
   const coachDropdownRef = useRef<HTMLDivElement>(null);
@@ -90,6 +96,7 @@ export default function LessonRecordTable({
       dateStr: today,
       lessonTypeId: lessonTypes[0]?.id || '',
       coachId: coaches[0]?.id || '',
+      studentCount: 1,
       note: '',
     });
   };
@@ -100,6 +107,7 @@ export default function LessonRecordTable({
       dateStr: record.dateStr,
       lessonTypeId: record.lessonTypeId,
       coachId: record.coachId,
+      studentCount: record.studentCount || 1,
       note: record.note || '',
     });
   };
@@ -109,7 +117,23 @@ export default function LessonRecordTable({
     setShowDatePicker(false);
     setShowCoachDropdown(false);
     setShowLessonTypeDropdown(false);
+    setCoachSearchQuery('');
   };
+
+  // Filter coaches based on search query
+  const filteredCoaches = coaches.filter((coach) =>
+    coach.name.toLowerCase().includes(coachSearchQuery.toLowerCase())
+  );
+
+  // Focus search input when dropdown opens
+  useEffect(() => {
+    if (showCoachDropdown && coachSearchInputRef.current) {
+      coachSearchInputRef.current.focus();
+    }
+    if (!showCoachDropdown) {
+      setCoachSearchQuery('');
+    }
+  }, [showCoachDropdown]);
 
   const saveRecord = async () => {
     if (!editingRecord) return;
@@ -124,6 +148,7 @@ export default function LessonRecordTable({
           dateStr: editingRecord.dateStr,
           lessonTypeId: editingRecord.lessonTypeId,
           coachId: editingRecord.coachId,
+          studentCount: editingRecord.studentCount,
           note: editingRecord.note || null,
         });
       } else {
@@ -131,6 +156,7 @@ export default function LessonRecordTable({
           dateStr: editingRecord.dateStr,
           lessonTypeId: editingRecord.lessonTypeId,
           coachId: editingRecord.coachId,
+          studentCount: editingRecord.studentCount,
           note: editingRecord.note || null,
         });
       }
@@ -179,8 +205,45 @@ export default function LessonRecordTable({
   // Calculate summary stats
   const totalRecords = lessonRecords.length;
   const totalCommission = lessonRecords.reduce((sum, record) => {
-    return sum + (record.lessonType?.commission || 0);
+    const commission = record.lessonType?.commission || 0;
+    const pricingType = record.lessonType?.pricingType || 'PER_SESSION';
+    const studentCount = record.studentCount || 1;
+    // 如果是按人计价，则乘以学员人数
+    return sum + (pricingType === 'PER_PERSON' ? commission * studentCount : commission);
   }, 0);
+
+  // Get the selected lesson type for the editing record
+  const getSelectedLessonType = () => {
+    if (!editingRecord) return null;
+    return lessonTypes.find((lt) => lt.id === editingRecord.lessonTypeId);
+  };
+
+  // Check if current editing lesson type is per-person pricing
+  const isPerPersonPricing = () => {
+    const lt = getSelectedLessonType();
+    return lt?.pricingType === 'PER_PERSON';
+  };
+
+  // Calculate commission for editing record
+  const getEditingCommission = () => {
+    const lt = getSelectedLessonType();
+    if (!lt || !editingRecord) return 0;
+    if (lt.pricingType === 'PER_PERSON') {
+      return lt.commission * editingRecord.studentCount;
+    }
+    return lt.commission;
+  };
+
+  // Sort records by date
+  const sortedRecords = [...lessonRecords].sort((a, b) => {
+    const dateA = new Date(a.dateStr).getTime();
+    const dateB = new Date(b.dateStr).getTime();
+    return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+  });
+
+  const toggleSortOrder = () => {
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200">
@@ -345,13 +408,26 @@ export default function LessonRecordTable({
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                日期
+                <button
+                  onClick={toggleSortOrder}
+                  className="flex items-center gap-1 hover:text-slate-800 transition-colors"
+                >
+                  日期
+                  {sortOrder === 'desc' ? (
+                    <ChevronDown className="w-4 h-4" />
+                  ) : (
+                    <ChevronUp className="w-4 h-4" />
+                  )}
+                </button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                 课程类型
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                 教练
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                人数
               </th>
               <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
                 提成
@@ -423,29 +499,80 @@ export default function LessonRecordTable({
                       <ChevronDown className="w-4 h-4 text-slate-400" />
                     </button>
                     {showCoachDropdown && (
-                      <div className="absolute top-full left-0 mt-1 w-full bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-20 max-h-48 overflow-y-auto">
-                        {coaches.map((coach) => (
-                          <button
-                            key={coach.id}
-                            onClick={() => {
-                              setEditingRecord({ ...editingRecord, coachId: coach.id });
-                              setShowCoachDropdown(false);
-                            }}
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
-                          >
-                            <span
-                              className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: coach.color }}
+                      <div className="absolute top-full left-0 mt-1 w-full bg-white rounded-lg shadow-lg border border-slate-200 z-20">
+                        <div className="p-2 border-b border-slate-100">
+                          <div className="relative">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                              ref={coachSearchInputRef}
+                              type="text"
+                              value={coachSearchQuery}
+                              onChange={(e) => setCoachSearchQuery(e.target.value)}
+                              placeholder="搜索教练..."
+                              className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                              onClick={(e) => e.stopPropagation()}
                             />
-                            {coach.name}
-                          </button>
-                        ))}
+                          </div>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto py-1">
+                          {filteredCoaches.length === 0 ? (
+                            <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                              未找到匹配的教练
+                            </div>
+                          ) : (
+                            filteredCoaches.map((coach) => (
+                              <button
+                                key={coach.id}
+                                onClick={() => {
+                                  setEditingRecord({ ...editingRecord, coachId: coach.id });
+                                  setShowCoachDropdown(false);
+                                  setCoachSearchQuery('');
+                                }}
+                                className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                              >
+                                <span
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: coach.color }}
+                                />
+                                {coach.name}
+                              </button>
+                            ))
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
                 </td>
+                <td className="px-6 py-3">
+                  {isPerPersonPricing() ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        value={editingRecord.studentCount}
+                        onChange={(e) =>
+                          setEditingRecord({
+                            ...editingRecord,
+                            studentCount: Math.max(1, parseInt(e.target.value) || 1),
+                          })
+                        }
+                        min="1"
+                        className="w-16 px-2 py-1.5 border border-emerald-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                      />
+                      <Users className="w-4 h-4 text-slate-400" />
+                    </div>
+                  ) : (
+                    <span className="text-sm text-slate-400">-</span>
+                  )}
+                </td>
                 <td className="px-6 py-3 text-sm text-slate-600">
-                  ¥{lessonTypes.find((lt) => lt.id === editingRecord.lessonTypeId)?.commission?.toFixed(2) || '0.00'}
+                  <span className="font-medium text-emerald-600">
+                    ¥{getEditingCommission().toFixed(2)}
+                  </span>
+                  {isPerPersonPricing() && (
+                    <span className="text-xs text-slate-400 ml-1">
+                      ({editingRecord.studentCount}人)
+                    </span>
+                  )}
                 </td>
                 <td className="px-6 py-3">
                   <input
@@ -481,7 +608,7 @@ export default function LessonRecordTable({
             {/* Loading State */}
             {loading && (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center">
+                <td colSpan={7} className="px-6 py-12 text-center">
                   <div className="flex items-center justify-center gap-3">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-emerald-600"></div>
                     <span className="text-slate-500">加载中...</span>
@@ -493,7 +620,7 @@ export default function LessonRecordTable({
             {/* Empty State */}
             {!loading && lessonRecords.length === 0 && editingRecord?.id !== null && (
               <tr>
-                <td colSpan={6} className="px-6 py-12 text-center">
+                <td colSpan={7} className="px-6 py-12 text-center">
                   <div className="flex flex-col items-center gap-3">
                     <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center">
                       <Search className="w-6 h-6 text-slate-400" />
@@ -512,7 +639,7 @@ export default function LessonRecordTable({
 
             {/* Data Rows */}
             {!loading &&
-              lessonRecords.map((record) => (
+              sortedRecords.map((record) => (
                 <tr
                   key={record.id}
                   className={`hover:bg-slate-50 transition-colors ${
@@ -575,29 +702,80 @@ export default function LessonRecordTable({
                             <ChevronDown className="w-4 h-4 text-slate-400" />
                           </button>
                           {showCoachDropdown && (
-                            <div className="absolute top-full left-0 mt-1 w-full bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-20 max-h-48 overflow-y-auto">
-                              {coaches.map((coach) => (
-                                <button
-                                  key={coach.id}
-                                  onClick={() => {
-                                    setEditingRecord({ ...editingRecord, coachId: coach.id });
-                                    setShowCoachDropdown(false);
-                                  }}
-                                  className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
-                                >
-                                  <span
-                                    className="w-3 h-3 rounded-full"
-                                    style={{ backgroundColor: coach.color }}
+                            <div className="absolute top-full left-0 mt-1 w-full bg-white rounded-lg shadow-lg border border-slate-200 z-20">
+                              <div className="p-2 border-b border-slate-100">
+                                <div className="relative">
+                                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                  <input
+                                    ref={coachSearchInputRef}
+                                    type="text"
+                                    value={coachSearchQuery}
+                                    onChange={(e) => setCoachSearchQuery(e.target.value)}
+                                    placeholder="搜索教练..."
+                                    className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                                    onClick={(e) => e.stopPropagation()}
                                   />
-                                  {coach.name}
-                                </button>
-                              ))}
+                                </div>
+                              </div>
+                              <div className="max-h-48 overflow-y-auto py-1">
+                                {filteredCoaches.length === 0 ? (
+                                  <div className="px-4 py-3 text-sm text-slate-500 text-center">
+                                    未找到匹配的教练
+                                  </div>
+                                ) : (
+                                  filteredCoaches.map((coach) => (
+                                    <button
+                                      key={coach.id}
+                                      onClick={() => {
+                                        setEditingRecord({ ...editingRecord, coachId: coach.id });
+                                        setShowCoachDropdown(false);
+                                        setCoachSearchQuery('');
+                                      }}
+                                      className="w-full px-4 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                                    >
+                                      <span
+                                        className="w-3 h-3 rounded-full"
+                                        style={{ backgroundColor: coach.color }}
+                                      />
+                                      {coach.name}
+                                    </button>
+                                  ))
+                                )}
+                              </div>
                             </div>
                           )}
                         </div>
                       </td>
+                      <td className="px-6 py-3">
+                        {isPerPersonPricing() ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="number"
+                              value={editingRecord.studentCount}
+                              onChange={(e) =>
+                                setEditingRecord({
+                                  ...editingRecord,
+                                  studentCount: Math.max(1, parseInt(e.target.value) || 1),
+                                })
+                              }
+                              min="1"
+                              className="w-16 px-2 py-1.5 border border-amber-300 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                            />
+                            <Users className="w-4 h-4 text-slate-400" />
+                          </div>
+                        ) : (
+                          <span className="text-sm text-slate-400">-</span>
+                        )}
+                      </td>
                       <td className="px-6 py-3 text-sm text-slate-600">
-                        ¥{lessonTypes.find((lt) => lt.id === editingRecord.lessonTypeId)?.commission?.toFixed(2) || '0.00'}
+                        <span className="font-medium text-emerald-600">
+                          ¥{getEditingCommission().toFixed(2)}
+                        </span>
+                        {isPerPersonPricing() && (
+                          <span className="text-xs text-slate-400 ml-1">
+                            ({editingRecord.studentCount}人)
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-3">
                         <input
@@ -653,9 +831,27 @@ export default function LessonRecordTable({
                         </div>
                       </td>
                       <td className="px-6 py-3">
+                        {record.lessonType?.pricingType === 'PER_PERSON' ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm text-slate-700">{record.studentCount || 1}</span>
+                            <Users className="w-3.5 h-3.5 text-slate-400" />
+                          </div>
+                        ) : (
+                          <span className="text-sm text-slate-400">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3">
                         <span className="text-sm font-medium text-emerald-600">
-                          ¥{record.lessonType?.commission?.toFixed(2) || '0.00'}
+                          ¥{(record.lessonType?.pricingType === 'PER_PERSON'
+                            ? (record.lessonType?.commission || 0) * (record.studentCount || 1)
+                            : (record.lessonType?.commission || 0)
+                          ).toFixed(2)}
                         </span>
+                        {record.lessonType?.pricingType === 'PER_PERSON' && (
+                          <span className="text-xs text-slate-400 ml-1">
+                            ({record.studentCount || 1}人×¥{record.lessonType?.commission?.toFixed(0)})
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-3">
                         <span className="text-sm text-slate-500">{record.note || '-'}</span>

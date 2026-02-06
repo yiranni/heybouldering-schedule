@@ -46,6 +46,7 @@ export async function GET(request: Request) {
             id: true,
             name: true,
             commission: true,
+            pricingType: true,
           },
         },
       },
@@ -69,7 +70,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { dateStr, lessonTypeId, coachId, note } = body;
+    const { dateStr, lessonTypeId, coachId, studentCount, note } = body;
 
     if (!dateStr || !lessonTypeId || !coachId) {
       return NextResponse.json(
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
         dateStr,
         lessonTypeId,
         coachId,
+        studentCount: studentCount || 1,
         note: note || null,
       },
       include: {
@@ -99,6 +101,7 @@ export async function POST(request: Request) {
             id: true,
             name: true,
             commission: true,
+            pricingType: true,
           },
         },
       },

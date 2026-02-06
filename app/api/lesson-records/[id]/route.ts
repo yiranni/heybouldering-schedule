@@ -23,6 +23,7 @@ export async function GET(
             id: true,
             name: true,
             commission: true,
+            pricingType: true,
           },
         },
       },
@@ -52,18 +53,20 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { dateStr, lessonTypeId, coachId, note } = body;
+    const { dateStr, lessonTypeId, coachId, studentCount, note } = body;
 
     const updateData: {
       dateStr?: string;
       lessonTypeId?: string;
       coachId?: string;
+      studentCount?: number;
       note?: string | null;
     } = {};
 
     if (dateStr !== undefined) updateData.dateStr = dateStr;
     if (lessonTypeId !== undefined) updateData.lessonTypeId = lessonTypeId;
     if (coachId !== undefined) updateData.coachId = coachId;
+    if (studentCount !== undefined) updateData.studentCount = studentCount;
     if (note !== undefined) updateData.note = note || null;
 
     const lessonRecord = await prisma.lessonRecord.update({
@@ -83,6 +86,7 @@ export async function PUT(
             id: true,
             name: true,
             commission: true,
+            pricingType: true,
           },
         },
       },

@@ -35,11 +35,12 @@ export async function PUT(
 ) {
   try {
     const body = await request.json();
-    const { name, commission } = body;
+    const { name, commission, pricingType } = body;
 
-    const updateData: { name?: string; commission?: number } = {};
+    const updateData: { name?: string; commission?: number; pricingType?: string } = {};
     if (name !== undefined) updateData.name = name;
     if (commission !== undefined) updateData.commission = parseFloat(commission);
+    if (pricingType !== undefined) updateData.pricingType = pricingType;
 
     const lessonType = await prisma.lessonType.update({
       where: { id: params.id },

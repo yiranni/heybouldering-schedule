@@ -77,11 +77,15 @@ export type WorkloadStats = {
   extended?: number; // 兼容旧代码
 };
 
+// 计价方式
+export type PricingType = "PER_SESSION" | "PER_PERSON";
+
 // 课程类型
 export type LessonType = {
   id: string;
   name: string;
   commission: number; // 提成价格
+  pricingType: PricingType; // 计价方式：每节计价 或 每人计价
 };
 
 // 课程记录
@@ -90,11 +94,13 @@ export type LessonRecord = {
   dateStr: string; // ISO Format YYYY-MM-DD
   lessonTypeId: string;
   coachId: string;
+  studentCount: number; // 学员人数（用于按人计价的课程）
   note?: string | null;
   lessonType?: {
     id: string;
     name: string;
     commission: number;
+    pricingType: PricingType;
   };
   coach?: {
     id: string;

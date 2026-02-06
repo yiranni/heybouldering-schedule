@@ -87,6 +87,8 @@ model LessonType {
   id            String         @id @default(cuid())
   name          String         // 课程名称
   commission    Float          // 提成价格
+  // 计价方式: PER_SESSION (每节计价) 或 PER_PERSON (每人计价)
+  pricingType   String         @default("PER_SESSION")
   archived      Boolean        @default(false)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
@@ -101,6 +103,7 @@ model LessonRecord {
   dateStr       String     // ISO Format YYYY-MM-DD
   lessonTypeId  String
   coachId       String
+  studentCount  Int        @default(1) // 学员人数（用于按人计价的课程）
   note          String?    // 备注
   lessonType    LessonType @relation(fields: [lessonTypeId], references: [id], onDelete: Cascade)
   coach         Coach      @relation(fields: [coachId], references: [id], onDelete: Cascade)

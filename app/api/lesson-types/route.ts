@@ -22,7 +22,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, commission } = body;
+    const { name, commission, pricingType } = body;
 
     if (!name || commission === undefined) {
       return NextResponse.json(
@@ -35,6 +35,7 @@ export async function POST(request: Request) {
       data: {
         name,
         commission: parseFloat(commission),
+        pricingType: pricingType || 'PER_SESSION',
       },
     });
 
