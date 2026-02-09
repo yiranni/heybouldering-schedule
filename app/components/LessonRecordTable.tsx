@@ -12,8 +12,10 @@ import {
   Filter,
   Search,
   Users,
+  FileDown,
 } from 'lucide-react';
 import { LessonRecord, LessonRecordFilters, Coach, LessonType } from '../types';
+import ExportLessonModal from './ExportLessonModal';
 
 type EditingRecord = {
   id: string | null; // null for new record
@@ -57,6 +59,7 @@ export default function LessonRecordTable({
   const [saving, setSaving] = useState(false);
   const [coachSearchQuery, setCoachSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // 默认降序（最新在前）
+  const [showExportModal, setShowExportModal] = useState(false);
   const coachSearchInputRef = useRef<HTMLInputElement>(null);
 
   const datePickerRef = useRef<HTMLDivElement>(null);
@@ -272,6 +275,14 @@ export default function LessonRecordTable({
             >
               <Filter className="w-4 h-4" />
               筛选
+            </button>
+            <button
+              onClick={() => setShowExportModal(true)}
+              disabled={lessonRecords.length === 0}
+              className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <FileDown className="w-4 h-4" />
+              导出
             </button>
             <button
               onClick={startAddNew}
@@ -880,6 +891,19 @@ export default function LessonRecordTable({
           </tbody>
         </table>
       </div>
+
+      {/* Export Modal */}
+      <ExportLessonModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        lessonRecords={lessonRecords}
+        coaches={coaches}
+        lessonTypes={lessonTypes}
+        dateRange={{
+          startDate: filters.startDate,
+          endDate: filters.endDate,
+        }}
+      />
     </div>
   );
 }
