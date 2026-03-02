@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Plus, X, Trash2, GripVertical } from 'lucide-react';
 import { Shift } from '../types';
 
@@ -21,6 +21,69 @@ const WEEKDAYS = [
 
 export default function StoreShiftEditor({ shifts, onChange }: StoreShiftEditorProps) {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const dragNodeRef = useRef<HTMLDivElement | null>(null);
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    setDraggedIndex(index);
+    dragNodeRef.current = e.currentTarget;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(index));
+    // 添加延迟以确保拖拽效果正确显示
+    setTimeout(() => {
+      if (dragNodeRef.current) {
+        dragNodeRef.current.style.opacity = '0.5';
+      }
+    }, 0);
+  };
+
+  const handleDragEnd = () => {
+    if (dragNodeRef.current) {
+      dragNodeRef.current.style.opacity = '1';
+    }
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    dragNodeRef.current = null;
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>, dropIndex: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      handleDragEnd();
+      return;
+    }
+
+    const newShifts = [...shifts];
+    const [draggedItem] = newShifts.splice(draggedIndex, 1);
+    newShifts.splice(dropIndex, 0, draggedItem);
+    onChange(newShifts);
+
+    // 更新 editingIndex 如果需要
+    if (editingIndex !== null) {
+      if (editingIndex === draggedIndex) {
+        setEditingIndex(dropIndex);
+      } else if (draggedIndex < editingIndex && dropIndex >= editingIndex) {
+        setEditingIndex(editingIndex - 1);
+      } else if (draggedIndex > editingIndex && dropIndex <= editingIndex) {
+        setEditingIndex(editingIndex + 1);
+      }
+    }
+
+    handleDragEnd();
+  };
 
   const addShift = () => {
     const newShift: Shift = {
@@ -107,14 +170,24 @@ export default function StoreShiftEditor({ shifts, onChange }: StoreShiftEditorP
           {shifts.map((shift, index) => (
             <div
               key={shift.id}
-              className={`border rounded-lg p-3 ${
+              draggable
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDragEnd={handleDragEnd}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, index)}
+              className={`border rounded-lg p-3 transition-all ${
                 editingIndex === index
                   ? 'border-blue-300 bg-blue-50'
+                  : dragOverIndex === index
+                  ? 'border-emerald-400 bg-emerald-50 border-dashed'
                   : 'border-slate-200 bg-white hover:border-slate-300'
-              } transition-colors`}
+              } ${draggedIndex === index ? 'opacity-50' : ''}`}
             >
               <div className="flex items-start gap-2">
-                <GripVertical className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
+                <div className="cursor-grab active:cursor-grabbing">
+                  <GripVertical className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0 hover:text-slate-600" />
+                </div>
 
                 <div className="flex-1 space-y-2">
                   {/* 班次名称 */}
@@ -224,7 +297,7 @@ export default function StoreShiftEditor({ shifts, onChange }: StoreShiftEditorP
       )}
 
       <div className="text-[10px] text-slate-500 bg-blue-50 p-2 rounded mt-2">
-        💡 提示：可以为门店配置任意数量的班次，每个班次可以设置不同的时间段和适用日期
+        💡 提示：拖拽左侧图标可调整班次顺序，每个班次可以设置不同的时间段和适用日期
       </div>
     </div>
   );
