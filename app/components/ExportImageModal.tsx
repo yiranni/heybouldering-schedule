@@ -80,6 +80,48 @@ export default function ExportImageModal({
   };
 
   const selectedStores = activeStores.filter(s => selectedStoreIds.includes(s.id));
+  const storeCoachWorkdayStats = selectedStores
+    .map(store => {
+      const coachStats = coaches
+        .map(coach => {
+          const workDays = new Set(
+            schedules
+              .filter(
+                schedule =>
+                  schedule.coachId === coach.id &&
+                  schedule.storeId === store.id &&
+                  weekDays.includes(schedule.dateStr)
+              )
+              .map(schedule => schedule.dateStr)
+          );
+
+          const weekDayLabels = Array.from(workDays)
+            .sort((a, b) => a.localeCompare(b))
+            .map(day => ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][getDayOfWeek(day)]);
+
+          return {
+            coachId: coach.id,
+            coachName: coach.name,
+            weekDayLabels,
+          };
+        })
+        .filter(item => item.weekDayLabels.length > 0)
+        .sort(
+          (a, b) =>
+            b.weekDayLabels.length - a.weekDayLabels.length ||
+            a.coachName.localeCompare(b.coachName, 'zh-CN')
+        );
+
+      return {
+        storeId: store.id,
+        storeName: store.name,
+        coachStats,
+      };
+    })
+    .filter(item => item.coachStats.length > 0);
+  const storeCoachStatsMap = new Map(
+    storeCoachWorkdayStats.map(item => [item.storeId, item.coachStats])
+  );
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] backdrop-blur-sm">
@@ -149,12 +191,35 @@ export default function ExportImageModal({
 
             {/* Schedule Table */}
             <div className="space-y-6">
-              {selectedStores.map(store => (
+              {selectedStores.map(store => {
+                const coachStats = storeCoachStatsMap.get(store.id) || [];
+                return (
                 <div key={store.id} className="border border-slate-200 rounded-lg overflow-hidden">
                   {/* Store Header */}
                   <div className="bg-slate-700 text-white p-3">
                     <h3 className="text-lg font-bold">{store.name}</h3>
                   </div>
+
+                  {/* Store Coach Workday Summary */}
+                  {coachStats.length > 0 && (
+                    <div className="p-3 bg-slate-50 border-b border-slate-200">
+                      <div className="text-xs font-semibold text-slate-600 mb-2">员工上班日</div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {coachStats.map(coachItem => (
+                          <div
+                            key={`${store.id}-${coachItem.coachId}`}
+                            className="text-xs text-slate-700 bg-white border border-slate-200 rounded px-2 pt-0.5 pb-1.5 flex items-center leading-[12px]"
+                          >
+                            <span className="font-medium -translate-y-0.5">{coachItem.coachName}</span>
+                            <span className="text-slate-400 mx-1 -translate-y-0.5">|</span>
+                            <span className="text-emerald-700 -translate-y-0.5">
+                              {coachItem.weekDayLabels.join('、')}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Days Grid */}
                   <div className="grid grid-cols-8 gap-px bg-slate-200">
@@ -340,7 +405,7 @@ export default function ExportImageModal({
                     )}
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
 
             {/* Footer */}
