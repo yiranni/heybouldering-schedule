@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { forbidden, getSessionFromRequest, unauthorized } from '@/app/lib/auth';
 
 // GET /api/stores/[id] - Get a single store
 export async function GET(
@@ -7,6 +8,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+
     const store = await prisma.store.findUnique({
       where: { id: params.id },
       include: {
@@ -35,6 +39,10 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+    if (session.role !== 'ADMIN') return forbidden('仅管理员可编辑门店');
+
     const body = await request.json();
     const { name, shifts } = body;
 
@@ -59,6 +67,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+    if (session.role !== 'ADMIN') return forbidden('仅管理员可编辑门店');
+
     await prisma.store.update({
       where: { id: params.id },
       data: { archived: true },

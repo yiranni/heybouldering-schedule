@@ -1,20 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// 允许的用户列表 - 从环境变量读取
-// 格式: EMAIL1:PASSWORD1,EMAIL2:PASSWORD2
-const getAuthorizedUsers = () => {
-  const authUsers = process.env.AUTHORIZED_USERS || '';
-
-  if (!authUsers) {
-    console.warn('警告: AUTHORIZED_USERS 环境变量未设置');
-    return [];
-  }
-
-  return authUsers.split(',').map(pair => {
-    const [email, password] = pair.split(':');
-    return { email: email.trim(), password: password.trim() };
-  }).filter(user => user.email && user.password);
-};
+import { prisma } from '@/app/lib/prisma';
+import { createSessionToken, setSessionCookie } from '@/app/lib/auth';
+import { verifyPassword } from '@/app/lib/password';
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,19 +14,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const authorizedUsers = getAuthorizedUsers();
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const plainPassword = String(password);
 
-    if (authorizedUsers.length === 0) {
-      return NextResponse.json(
-        { error: '系统未配置授权用户' },
-        { status: 500 }
-      );
-    }
-
-    // 验证用户
-    const user = authorizedUsers.find(
-      (u) => u.email === email && u.password === password
-    );
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
 
     if (!user) {
       return NextResponse.json(
@@ -48,17 +28,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 生成简单的 token（实际生产环境应使用 JWT）
-    const token = Buffer.from(`${email}:${Date.now()}`).toString('base64');
+    const isPasswordValid = await verifyPassword(plainPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        { error: '邮箱或密码错误' },
+        { status: 401 }
+      );
+    }
 
-    return NextResponse.json(
+    const token = createSessionToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    const response = NextResponse.json(
       {
-        token,
-        email: user.email,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          name: user.name,
+        },
         message: '登录成功'
       },
       { status: 200 }
     );
+
+    setSessionCookie(response, token);
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(

@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { forbidden, getSessionFromRequest, unauthorized } from '@/app/lib/auth';
 
 // GET /api/stores - Get all non-archived stores
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+
     const stores = await prisma.store.findMany({
       where: {
         archived: false,
@@ -29,6 +33,10 @@ export async function GET() {
 // POST /api/stores - Create a new store
 export async function POST(request: NextRequest) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+    if (session.role !== 'ADMIN') return forbidden('仅管理员可编辑门店');
+
     const body = await request.json();
     const { name, shifts } = body;
 

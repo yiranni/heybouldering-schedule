@@ -9,6 +9,7 @@ import CollapsiblePanel from './CollapsiblePanel';
 interface CoachListProps {
   coaches: Coach[];
   stores: Store[];
+  canEdit: boolean;
   onDragStart: (e: React.DragEvent, coachId: string) => void;
   onDeleteCoach: (id: string) => void;
   onAddCoach: (coach: Omit<Coach, 'id'>) => Promise<Coach>;
@@ -29,7 +30,7 @@ const AVAILABLE_COLORS = [
   { name: '天蓝', value: 'bg-sky-500' },
 ];
 
-export default function CoachList({ coaches, stores, onDragStart, onDeleteCoach, onAddCoach, onUpdateCoach, onUpdateCoachStores }: CoachListProps) {
+export default function CoachList({ coaches, stores, canEdit, onDragStart, onDeleteCoach, onAddCoach, onUpdateCoach, onUpdateCoachStores }: CoachListProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCoachName, setNewCoachName] = useState('');
   const [newCoachColor, setNewCoachColor] = useState('bg-blue-500');
@@ -176,22 +177,24 @@ export default function CoachList({ coaches, stores, onDragStart, onDeleteCoach,
       defaultOpen={true}
     >
       <div className="pt-2">
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="w-full mb-2 p-2 border border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50 rounded-md transition-colors text-sm text-slate-600 hover:text-emerald-600 flex items-center justify-center gap-2"
-        >
-          {showAddForm ? (
-            <>
-              <X className="w-4 h-4" />
-              取消添加
-            </>
-          ) : (
-            <>
-              <Plus className="w-4 h-4" />
-              添加教练
-            </>
-          )}
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="w-full mb-2 p-2 border border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50 rounded-md transition-colors text-sm text-slate-600 hover:text-emerald-600 flex items-center justify-center gap-2"
+          >
+            {showAddForm ? (
+              <>
+                <X className="w-4 h-4" />
+                取消添加
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" />
+                添加教练
+              </>
+            )}
+          </button>
+        )}
 
         {showAddForm && (
           <div className="mb-3 p-3 border border-slate-200 rounded-lg bg-slate-50 space-y-3">
@@ -339,7 +342,7 @@ export default function CoachList({ coaches, stores, onDragStart, onDeleteCoach,
                         : 'hover:bg-slate-50 border-transparent hover:border-slate-200'
                     }`}
                   >
-                    {isEditing ? (
+                    {canEdit && isEditing ? (
                       <div className="space-y-2">
                         <div>
                           <label className="text-xs text-slate-600 mb-1 block">教练名称</label>
@@ -453,9 +456,11 @@ export default function CoachList({ coaches, stores, onDragStart, onDeleteCoach,
                       <>
                         <div className="flex items-center gap-2">
                           <div
-                            draggable
-                            onDragStart={(e) => onDragStart(e, coach.id)}
-                            className="flex items-center gap-2 flex-1 cursor-grab active:cursor-grabbing"
+                            draggable={canEdit}
+                            onDragStart={(e) => {
+                              if (canEdit) onDragStart(e, coach.id);
+                            }}
+                            className={`flex items-center gap-2 flex-1 ${canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
                           >
                             <div
                               className={`w-6 h-6 rounded-full ${coach.color} flex-shrink-0 flex items-center justify-center text-[10px] text-white font-bold`}
@@ -465,25 +470,29 @@ export default function CoachList({ coaches, stores, onDragStart, onDeleteCoach,
                             <span className="text-sm text-slate-600 truncate font-medium">
                               {coach.name}
                             </span>
-                            <GripVertical className="w-4 h-4 text-slate-300 ml-auto" />
+                            {canEdit && <GripVertical className="w-4 h-4 text-slate-300 ml-auto" />}
                           </div>
 
-                          <button
-                            onClick={() => startEditing(coach)}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-blue-50 rounded-md transition-all"
-                            title="编辑教练"
-                          >
-                            <Edit2 className="w-3.5 h-3.5 text-blue-500" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => startEditing(coach)}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-blue-50 rounded-md transition-all"
+                              title="编辑教练"
+                            >
+                              <Edit2 className="w-3.5 h-3.5 text-blue-500" />
+                            </button>
+                          )}
 
-                          <button
-                            onClick={() => handleDeleteCoach(coach.id)}
-                            disabled={deletingId === coach.id}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 rounded-md transition-all disabled:opacity-50"
-                            title="删除教练"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleDeleteCoach(coach.id)}
+                              disabled={deletingId === coach.id}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 rounded-md transition-all disabled:opacity-50"
+                              title="删除教练"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                            </button>
+                          )}
                         </div>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {/* 雇佣类型标签 */}
@@ -510,7 +519,7 @@ export default function CoachList({ coaches, stores, onDragStart, onDeleteCoach,
                             </span>
                           ))}
                         </div>
-                        <CoachAvailabilityEditor coach={coach} onUpdate={onUpdateCoach} />
+                        <CoachAvailabilityEditor coach={coach} onUpdate={onUpdateCoach} canEdit={canEdit} />
                       </>
                     )}
                   </div>

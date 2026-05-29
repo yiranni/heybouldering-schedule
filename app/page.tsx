@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Calendar,
   RefreshCw,
@@ -15,7 +15,6 @@ import {
   CalendarDays,
   CalendarRange,
 } from "lucide-react";
-import Link from "next/link";
 import { ShiftType, ScheduleItem, WorkloadStats } from "./types";
 import { addDays, getWeekDays, getMonthDays, getDayOfWeek } from "./utils/date";
 import { generateWeekSchedule } from "./utils/schedule";
@@ -32,8 +31,11 @@ import ShiftModal from "./components/ShiftModal";
 import CollapsiblePanel from "./components/CollapsiblePanel";
 import ExportImageModal from "./components/ExportImageModal";
 import DateRangeModal from "./components/DateRangeModal";
+import { useAuth } from "./components/AuthGuard";
 
 export default function RockGymScheduler() {
+  const { user } = useAuth();
+  const canEdit = user?.role === "ADMIN";
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const {
     coaches,
@@ -99,20 +101,6 @@ export default function RockGymScheduler() {
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [showScheduleDropdown, setShowScheduleDropdown] = useState(false);
   const [showDateRangeModal, setShowDateRangeModal] = useState(false);
-  const [showNavDropdown, setShowNavDropdown] = useState(false);
-  const navDropdownRef = useRef<HTMLDivElement>(null);
-
-  // 点击外部关闭导航下拉菜单
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (navDropdownRef.current && !navDropdownRef.current.contains(event.target as Node)) {
-        setShowNavDropdown(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Load schedules from database - merge with existing schedules to avoid losing unsaved changes
   useEffect(() => {
@@ -143,6 +131,7 @@ export default function RockGymScheduler() {
   }, [dbSchedules, hasUnsavedChanges, isInitialLoad]);
 
   const generateSchedule = () => {
+    if (!canEdit) return;
     const newSchedule = generateWeekSchedule(coaches, stores, weekDays);
     setSchedules((prev) => {
       const filtered = prev.filter((s) => !weekDays.includes(s.dateStr));
@@ -153,6 +142,7 @@ export default function RockGymScheduler() {
 
   // 为指定日期范围生成排班（会覆盖已有排班）
   const generateScheduleForRange = (dateRange: string[]) => {
+    if (!canEdit) return;
     // 生成新的排班
     const newSchedule = generateWeekSchedule(coaches, stores, dateRange);
     
@@ -199,6 +189,7 @@ export default function RockGymScheduler() {
   };
 
   const handleSaveSchedule = async () => {
+    if (!canEdit) return;
     try {
       setIsSaving(true);
       // Save all schedules in the current date range
@@ -395,6 +386,7 @@ export default function RockGymScheduler() {
   );
 
   const handleRemoveShift = (scheduleId: string) => {
+    if (!canEdit) return;
     setSchedules((prev) => prev.filter((s) => s.id !== scheduleId));
     setHasUnsavedChanges(true);
   };
@@ -407,6 +399,7 @@ export default function RockGymScheduler() {
     providedShiftId?: string,
     providedShiftName?: string
   ) => {
+    if (!canEdit) return;
     // 使用提供的 shiftId/shiftName,如果没有提供则从 type 转换
     const shiftId = providedShiftId || type.toLowerCase();
     const shiftName = providedShiftName || (type === "MORNING" ? "早班" : "晚班");
@@ -450,6 +443,7 @@ export default function RockGymScheduler() {
   };
 
   const handleDragStart = (e: React.DragEvent, coachId: string) => {
+    if (!canEdit) return;
     e.dataTransfer.setData("coachId", coachId);
     e.dataTransfer.effectAllowed = "copy";
   };
@@ -459,6 +453,7 @@ export default function RockGymScheduler() {
     storeIds: string[],
     primaryStoreId?: string
   ) => {
+    if (!canEdit) return;
     try {
       const response = await fetch(`/api/coaches/${coachId}/stores`, {
         method: "PUT",
@@ -557,31 +552,7 @@ export default function RockGymScheduler() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold tracking-tight">嘿抱工作后台</h1>
               <span className="text-slate-400">·</span>
-              <div className="relative" ref={navDropdownRef}>
-                <button
-                  onClick={() => setShowNavDropdown(!showNavDropdown)}
-                  className="flex items-center gap-1 text-lg font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
-                >
-                  排班
-                  <ChevronDown className={`w-4 h-4 transition-transform ${showNavDropdown ? 'rotate-180' : ''}`} />
-                </button>
-                {showNavDropdown && (
-                  <div className="absolute top-full left-0 mt-2 bg-slate-800 rounded-lg shadow-xl border border-slate-700 py-1 min-w-[120px] z-50">
-                    <Link
-                      href="/"
-                      className="block px-4 py-2 text-sm text-emerald-400 bg-slate-700/50"
-                    >
-                      排班
-                    </Link>
-                    <Link
-                      href="/lessons"
-                      className="block px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
-                    >
-                      课程统计
-                    </Link>
-                  </div>
-                )}
-              </div>
+              <span className="text-lg font-medium text-emerald-400">排班</span>
             </div>
           </div>
 
@@ -604,43 +575,45 @@ export default function RockGymScheduler() {
           </div>
 
           <div className="flex gap-2">
-            <div className="relative">
-              <button
-                onClick={() => setShowScheduleDropdown(!showScheduleDropdown)}
-                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-md font-medium transition-all shadow-lg active:scale-95"
-              >
-                <RefreshCw className="w-4 h-4" />
-                开始排班
-                <ChevronDown className="w-4 h-4" />
-              </button>
+            {canEdit && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowScheduleDropdown(!showScheduleDropdown)}
+                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-md font-medium transition-all shadow-lg active:scale-95"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  开始排班
+                  <ChevronDown className="w-4 h-4" />
+                </button>
 
-              {showScheduleDropdown && (
-                <div className="absolute left-0 mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-1 min-w-[160px] z-50">
-                  <button
-                    onClick={handleGenerateThisWeek}
-                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
-                  >
-                    <Calendar className="w-4 h-4" />
-                    本周
-                  </button>
-                  <button
-                    onClick={handleGenerateThisMonth}
-                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
-                  >
-                    <CalendarDays className="w-4 h-4" />
-                    本月
-                  </button>
-                  <button
-                    onClick={handleGenerateCustomRange}
-                    className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
-                  >
-                    <CalendarRange className="w-4 h-4" />
-                    自定义范围
-                  </button>
-                </div>
-              )}
-            </div>
-            {hasUnsavedChanges && (
+                {showScheduleDropdown && (
+                  <div className="absolute left-0 mt-2 bg-white rounded-lg shadow-xl border border-slate-200 py-1 min-w-[160px] z-50">
+                    <button
+                      onClick={handleGenerateThisWeek}
+                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+                    >
+                      <Calendar className="w-4 h-4" />
+                      本周
+                    </button>
+                    <button
+                      onClick={handleGenerateThisMonth}
+                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+                    >
+                      <CalendarDays className="w-4 h-4" />
+                      本月
+                    </button>
+                    <button
+                      onClick={handleGenerateCustomRange}
+                      className="w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center gap-2 text-slate-700"
+                    >
+                      <CalendarRange className="w-4 h-4" />
+                      自定义范围
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            {canEdit && hasUnsavedChanges && (
               <button
                 onClick={handleSaveSchedule}
                 disabled={isSaving}
@@ -691,30 +664,34 @@ export default function RockGymScheduler() {
       </header>
 
       <main className="max-w-[1600px] mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="space-y-6 lg:col-span-1">
-          <WeeklyStats
-            weekStats={weekStats}
-            monthStats={monthStats}
-            coaches={coaches}
-          />
-          <CoachList
-            coaches={coaches}
-            stores={stores}
-            onDragStart={handleDragStart}
-            onDeleteCoach={deleteCoach}
-            onAddCoach={createCoach}
-            onUpdateCoach={updateCoach}
-            onUpdateCoachStores={handleUpdateCoachStores}
-          />
-          <StoreList
-            stores={stores}
-            onDeleteStore={deleteStore}
-            onAddStore={createStore}
-            onUpdateStore={updateStore}
-          />
-        </div>
+        {canEdit && (
+          <div className="space-y-6 lg:col-span-1">
+            <WeeklyStats
+              weekStats={weekStats}
+              monthStats={monthStats}
+              coaches={coaches}
+            />
+            <CoachList
+              coaches={coaches}
+              stores={stores}
+              canEdit={canEdit}
+              onDragStart={handleDragStart}
+              onDeleteCoach={deleteCoach}
+              onAddCoach={createCoach}
+              onUpdateCoach={updateCoach}
+              onUpdateCoachStores={handleUpdateCoachStores}
+            />
+            <StoreList
+              stores={stores}
+              canEdit={canEdit}
+              onDeleteStore={deleteStore}
+              onAddStore={createStore}
+              onUpdateStore={updateStore}
+            />
+          </div>
+        )}
 
-        <div className="lg:col-span-4 space-y-4">
+        <div className={`${canEdit ? "lg:col-span-4" : "lg:col-span-5"} space-y-4`}>
           {/* 教练筛选器 */}
           <CollapsiblePanel
             title="筛选教练"
@@ -771,6 +748,7 @@ export default function RockGymScheduler() {
             schedules={filteredSchedules}
             coaches={coaches}
             stores={stores}
+            canEdit={canEdit}
             onAddShift={handleAddShift}
             onRemoveShift={handleRemoveShift}
             onOpenModal={(date, type, storeId, shiftId, shiftName) => setSelectedSlot({ date, type, storeId, shiftId, shiftName })}
@@ -782,6 +760,7 @@ export default function RockGymScheduler() {
         slot={selectedSlot}
         coaches={coaches}
         schedules={schedules}
+        canEdit={canEdit}
         onClose={() => setSelectedSlot(null)}
         onAddShift={handleAddShift}
       />

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { forbidden, getSessionFromRequest, unauthorized } from '@/app/lib/auth';
 
 // DELETE /api/schedules/[id] - Delete a single schedule
 export async function DELETE(
@@ -7,6 +8,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+    if (session.role !== 'ADMIN') return forbidden('仅管理员可编辑排班');
+
     await prisma.schedule.delete({
       where: { id: params.id },
     });

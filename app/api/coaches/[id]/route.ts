@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { forbidden, getSessionFromRequest, unauthorized } from '@/app/lib/auth';
 
 // GET /api/coaches/[id] - Get a single coach
 export async function GET(
@@ -7,6 +8,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+
     const coach = await prisma.coach.findUnique({
       where: { id: params.id },
     });
@@ -28,6 +32,10 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+    if (session.role !== 'ADMIN') return forbidden('仅管理员可编辑教练');
+
     const body = await request.json();
     const { name, color, avatar, employmentType, availability } = body;
 
@@ -70,6 +78,10 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+    if (session.role !== 'ADMIN') return forbidden('仅管理员可编辑教练');
+
     await prisma.coach.update({
       where: { id: params.id },
       data: { archived: true },

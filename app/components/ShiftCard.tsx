@@ -7,6 +7,7 @@ interface ShiftCardProps {
   scheduleId: string;
   onRemove: (id: string) => void;
   isExtended?: boolean;
+  canEdit: boolean;
 }
 
 export default function ShiftCard({
@@ -14,6 +15,7 @@ export default function ShiftCard({
   scheduleId,
   onRemove,
   isExtended,
+  canEdit,
 }: ShiftCardProps) {
   return (
     <div className="group flex items-center justify-between bg-white p-1.5 rounded border border-slate-100 shadow-sm hover:shadow-md transition-all">
@@ -32,13 +34,15 @@ export default function ShiftCard({
           )}
         </div>
       </div>
-      <button
-        onClick={() => onRemove(scheduleId)}
-        className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-        title="移除排班"
-      >
-        ✕
-      </button>
+      {canEdit && (
+        <button
+          onClick={() => onRemove(scheduleId)}
+          className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+          title="移除排班"
+        >
+          ✕
+        </button>
+      )}
     </div>
   );
 }

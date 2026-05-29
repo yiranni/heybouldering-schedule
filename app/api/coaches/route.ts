@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { forbidden, getSessionFromRequest, unauthorized } from '@/app/lib/auth';
 
 // GET /api/coaches - Get all non-archived coaches
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+
     const coaches = await prisma.coach.findMany({
       where: {
         archived: false,
@@ -38,6 +42,10 @@ export async function GET() {
 // POST /api/coaches - Create a new coach
 export async function POST(request: NextRequest) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+    if (session.role !== 'ADMIN') return forbidden('仅管理员可编辑教练');
+
     const body = await request.json();
     const { name, color, avatar, employmentType, weekSchedule } = body;
 

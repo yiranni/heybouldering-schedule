@@ -8,12 +8,13 @@ import { Store, Shift } from '../types';
 
 interface StoreListProps {
   stores: Store[];
+  canEdit: boolean;
   onDeleteStore: (id: string) => void;
   onAddStore: (store: { name: string; shifts: Shift[] }) => void;
   onUpdateStore: (id: string, updates: { name?: string; shifts?: Shift[] }) => void;
 }
 
-export default function StoreList({ stores, onDeleteStore, onAddStore, onUpdateStore }: StoreListProps) {
+export default function StoreList({ stores, canEdit, onDeleteStore, onAddStore, onUpdateStore }: StoreListProps) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newStoreName, setNewStoreName] = useState('');
   const [newShifts, setNewShifts] = useState<Shift[]>([
@@ -109,22 +110,24 @@ export default function StoreList({ stores, onDeleteStore, onAddStore, onUpdateS
       defaultOpen={true}
     >
       <div className="pt-2">
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="w-full mb-2 p-2 border border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50 rounded-md transition-colors text-sm text-slate-600 hover:text-emerald-600 flex items-center justify-center gap-2"
-        >
-          {showAddForm ? (
-            <>
-              <X className="w-4 h-4" />
-              取消添加
-            </>
-          ) : (
-            <>
-              <Plus className="w-4 h-4" />
-              添加门店
-            </>
-          )}
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="w-full mb-2 p-2 border border-dashed border-slate-300 hover:border-emerald-500 hover:bg-emerald-50 rounded-md transition-colors text-sm text-slate-600 hover:text-emerald-600 flex items-center justify-center gap-2"
+          >
+            {showAddForm ? (
+              <>
+                <X className="w-4 h-4" />
+                取消添加
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" />
+                添加门店
+              </>
+            )}
+          </button>
+        )}
 
         {showAddForm && (
           <div className="mb-3 p-3 border border-slate-200 rounded-lg bg-slate-50 space-y-3">
@@ -189,7 +192,7 @@ export default function StoreList({ stores, onDeleteStore, onAddStore, onUpdateS
                         : 'hover:bg-slate-50 border-transparent hover:border-slate-200'
                     }`}
                   >
-                    {isEditing ? (
+                    {canEdit && isEditing ? (
                       <div className="space-y-2">
                         <div>
                           <label className="text-xs text-slate-600 mb-1 block">门店名称</label>
@@ -242,22 +245,26 @@ export default function StoreList({ stores, onDeleteStore, onAddStore, onUpdateS
                         </div>
 
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          <button
-                            onClick={() => startEditing(store)}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-blue-50 rounded-md transition-all"
-                            title="编辑门店"
-                          >
-                            <Edit2 className="w-3.5 h-3.5 text-blue-500" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => startEditing(store)}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-blue-50 rounded-md transition-all"
+                              title="编辑门店"
+                            >
+                              <Edit2 className="w-3.5 h-3.5 text-blue-500" />
+                            </button>
+                          )}
 
-                          <button
-                            onClick={() => handleDeleteStore(store.id)}
-                            disabled={deletingId === store.id}
-                            className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 rounded-md transition-all disabled:opacity-50"
-                            title="删除门店"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleDeleteStore(store.id)}
+                              disabled={deletingId === store.id}
+                              className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 rounded-md transition-all disabled:opacity-50"
+                              title="删除门店"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}

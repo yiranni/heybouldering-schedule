@@ -20,6 +20,7 @@ interface ShiftDropZoneProps {
   shiftName?: string; // 新增:班次名称
   minCoaches?: number; // 最少需要的教练数
   maxCoaches?: number; // 最多需要的教练数
+  canEdit: boolean;
   onAdd: (
     dateStr: string,
     type: ShiftType,
@@ -44,6 +45,7 @@ export default function ShiftDropZone({
   shiftName,
   minCoaches,
   maxCoaches,
+  canEdit,
   onAdd,
   onRemove,
   onOpenModal,
@@ -51,16 +53,19 @@ export default function ShiftDropZone({
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
+    if (!canEdit) return;
     e.preventDefault();
     setIsDragOver(true);
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
+    if (!canEdit) return;
     e.preventDefault();
     setIsDragOver(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
+    if (!canEdit) return;
     e.preventDefault();
     setIsDragOver(false);
     const coachId = e.dataTransfer.getData("coachId");
@@ -106,16 +111,18 @@ export default function ShiftDropZone({
                 (type === "MORNING" ? "早班" : `晚班${isExtended ? "★" : ""}`)}
             </span>
           </div>
-          <button
-            onClick={onOpenModal}
-            className={`opacity-0 group-hover/slot:opacity-100 transition-opacity ${
-              type === "MORNING"
-                ? "text-sky-400 hover:text-sky-600"
-                : "text-indigo-400 hover:text-indigo-600"
-            }`}
-          >
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
+          {canEdit && (
+            <button
+              onClick={onOpenModal}
+              className={`opacity-0 group-hover/slot:opacity-100 transition-opacity ${
+                type === "MORNING"
+                  ? "text-sky-400 hover:text-sky-600"
+                  : "text-indigo-400 hover:text-indigo-600"
+              }`}
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <div
@@ -148,6 +155,7 @@ export default function ShiftDropZone({
               scheduleId={s.id}
               onRemove={onRemove}
               isExtended={isExtended}
+              canEdit={canEdit}
             />
           );
         })}

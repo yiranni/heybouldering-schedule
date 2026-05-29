@@ -9,6 +9,7 @@ interface ScheduleCalendarProps {
   schedules: ScheduleItem[];
   coaches: Coach[];
   stores: Store[];
+  canEdit: boolean;
   onAddShift: (dateStr: string, type: ShiftType, coachId: string, storeId: string, shiftId?: string, shiftName?: string) => void;
   onRemoveShift: (scheduleId: string) => void;
   onOpenModal: (date: string, type: ShiftType, storeId: string, shiftId?: string, shiftName?: string) => void;
@@ -19,6 +20,7 @@ export default function ScheduleCalendar({
   schedules,
   coaches,
   stores,
+  canEdit,
   onAddShift,
   onRemoveShift,
   onOpenModal,
@@ -182,6 +184,7 @@ export default function ScheduleCalendar({
                           shiftName={shift.name}
                           minCoaches={shift.minCoaches}
                           maxCoaches={shift.maxCoaches}
+                          canEdit={canEdit}
                           onAdd={(dateStr, type, coachId, shiftId, shiftName) =>
                             onAddShift(dateStr, type, coachId, store.id, shiftId, shiftName)
                           }

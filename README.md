@@ -9,7 +9,7 @@
 - ✅ **智能排班** - 自动生成周排班，支持手动调整
 - ✅ **工作量统计** - 实时显示每位教练的工作时长和班次
 - ✅ **拖拽排班** - 直观的拖拽操作
-- ✅ **邮箱密码验证** - 保护系统仅限授权人员访问
+- ✅ **账号角色权限** - 支持 `admin/coach` 角色（coach 只读）
 - ✅ **数据持久化** - PostgreSQL 数据库存储
 - ✅ **导出功能** - 导出排班表为文本格式
 
@@ -51,18 +51,23 @@ cp .env.example .env
 # 数据库连接
 DATABASE_URL="postgresql://username:password@localhost:5432/scheduler_db?schema=public"
 
-# 授权用户（邮箱:密码格式，多个用户用逗号分隔）
-AUTHORIZED_USERS="admin@example.com:password123,manager@example.com:password456"
+# 会话签名密钥（生产环境必须设置）
+AUTH_SESSION_SECRET="replace-with-a-strong-random-secret"
+
+# 初始化管理员账号（可选）
+ADMIN_EMAIL="admin@example.com"
+ADMIN_PASSWORD="change-this-password"
+ADMIN_NAME="系统管理员"
 ```
 
 ### 4. 初始化数据库
 
 ```bash
 # 创建数据库表
-npx prisma migrate dev
-
-# 或使用 db push
 npx prisma db push
+
+# 创建管理员账号
+npm run user:create-admin -- admin@example.com YourPassword123 管理员 ADMIN
 ```
 
 ### 5. 启动开发服务器
@@ -73,9 +78,12 @@ npm run dev
 
 访问 [http://localhost:3001](http://localhost:3001)
 
-## 登录系统
+## 登录与角色权限
 
-首次访问时，系统会要求登录。使用在 `.env` 文件中配置的邮箱和密码登录。
+首次访问时，系统会要求登录。账号来自数据库 `users` 表。
+
+- `admin`：可编辑排班、教练和门店
+- `coach`：可查看全部排班，但不可编辑
 
 **安全提示**:
 - 使用强密码（至少 8 位，包含字母、数字和特殊字符）
@@ -92,7 +100,7 @@ npm run dev
 
 1. 推送代码到 GitHub
 2. 在 [Netlify](https://www.netlify.com/) 导入项目
-3. 配置环境变量（DATABASE_URL 和 AUTHORIZED_USERS）
+3. 配置环境变量（`DATABASE_URL`、`AUTH_SESSION_SECRET`）
 4. 部署完成
 
 ### 推荐的数据库服务
@@ -193,9 +201,9 @@ scheduler-app/
 
 ### 登录失败
 
-- 检查 AUTHORIZED_USERS 格式是否正确
-- 确保邮箱和密码匹配
-- 查看浏览器控制台错误信息
+- 确认数据库中存在该用户（可用 `npm run user:create-admin` 创建）
+- 确认邮箱和密码匹配
+- 确认 `AUTH_SESSION_SECRET` 已配置
 
 ### 排班保存失败
 

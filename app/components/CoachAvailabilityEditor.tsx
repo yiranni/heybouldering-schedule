@@ -7,6 +7,7 @@ import { Calendar } from 'lucide-react';
 interface CoachAvailabilityEditorProps {
   coach: Coach;
   onUpdate: (id: string, updates: Partial<Coach>) => Promise<void>;
+  canEdit: boolean;
 }
 
 const DAYS_OF_WEEK = [
@@ -19,7 +20,7 @@ const DAYS_OF_WEEK = [
   { value: 0, label: '周日', shortLabel: '日' },
 ];
 
-export default function CoachAvailabilityEditor({ coach, onUpdate }: CoachAvailabilityEditorProps) {
+export default function CoachAvailabilityEditor({ coach, onUpdate, canEdit }: CoachAvailabilityEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
 
   // 获取教练所有门店的所有班次
@@ -160,12 +161,14 @@ export default function CoachAvailabilityEditor({ coach, onUpdate }: CoachAvaila
           <Calendar className="w-3 h-3" />
           <span className="font-mono">{getScheduleDescription()}</span>
         </div>
-        <button
-          onClick={() => setIsEditing(true)}
-          className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-        >
-          编辑可工作时间
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+          >
+            编辑可工作时间
+          </button>
+        )}
       </div>
     );
   }

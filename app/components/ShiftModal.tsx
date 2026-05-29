@@ -6,6 +6,7 @@ interface ShiftModalProps {
   slot: { date: string; type: ShiftType; storeId: string; shiftId?: string; shiftName?: string } | null;
   coaches: Coach[];
   schedules: ScheduleItem[];
+  canEdit: boolean;
   onClose: () => void;
   onAddShift: (dateStr: string, type: ShiftType, coachId: string, storeId: string, shiftId?: string, shiftName?: string) => void;
 }
@@ -14,6 +15,7 @@ export default function ShiftModal({
   slot,
   coaches,
   schedules,
+  canEdit,
   onClose,
   onAddShift,
 }: ShiftModalProps) {
@@ -72,10 +74,10 @@ export default function ShiftModal({
             return (
               <button
                 key={coach.id}
-                disabled={isAssigned || isWorkingAtDifferentStore}
+                disabled={!canEdit || isAssigned || isWorkingAtDifferentStore}
                 onClick={() => onAddShift(slot.date, slot.type, coach.id, slot.storeId, slot.shiftId, slot.shiftName)}
                 className={`w-full flex items-center justify-between p-3 rounded-lg border text-left transition-all ${
-                  isAssigned || isWorkingAtDifferentStore
+                  !canEdit || isAssigned || isWorkingAtDifferentStore
                     ? 'bg-slate-100 border-slate-200 opacity-50 cursor-not-allowed'
                     : 'hover:bg-emerald-50 hover:border-emerald-200 border-slate-200 bg-white'
                 }`}

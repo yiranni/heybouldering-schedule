@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { forbidden, getSessionFromRequest, unauthorized } from '@/app/lib/auth';
 
 // PUT /api/coaches/[id]/stores - Update coach's store associations
 export async function PUT(
@@ -7,6 +8,10 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+    if (session.role !== 'ADMIN') return forbidden('仅管理员可编辑教练');
+
     const body = await request.json();
     const { storeIds, primaryStoreId } = body;
 
