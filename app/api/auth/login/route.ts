@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       SELECT
         id,
         account_id AS "accountId",
-        password_hash AS "passwordHash",
+        "passwordHash" AS "passwordHash",
         role,
         name
       FROM users
