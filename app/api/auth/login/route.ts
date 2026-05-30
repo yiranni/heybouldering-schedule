@@ -5,25 +5,25 @@ import { verifyPassword } from '@/app/lib/password';
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const { account, password } = await request.json();
 
-    if (!email || !password) {
+    if (!account || !password) {
       return NextResponse.json(
-        { error: '请输入邮箱和密码' },
+        { error: '请输入账号和密码' },
         { status: 400 }
       );
     }
 
-    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedAccount = String(account).trim().toLowerCase();
     const plainPassword = String(password);
 
     const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
+      where: { email: normalizedAccount },
     });
 
     if (!user) {
       return NextResponse.json(
-        { error: '邮箱或密码错误' },
+        { error: '账号或密码错误' },
         { status: 401 }
       );
     }
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const isPasswordValid = await verifyPassword(plainPassword, user.passwordHash);
     if (!isPasswordValid) {
       return NextResponse.json(
-        { error: '邮箱或密码错误' },
+        { error: '账号或密码错误' },
         { status: 401 }
       );
     }

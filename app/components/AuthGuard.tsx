@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useMemo, useState, useEffect } from 'react';
-import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { Lock, User, Eye, EyeOff } from 'lucide-react';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -36,7 +36,7 @@ export function useAuth(): AuthContextValue {
 export default function AuthGuard({ children }: AuthGuardProps) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [email, setEmail] = useState('');
+  const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -73,14 +73,14 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ account, password }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
         setUser(data.user ?? null);
-        setEmail('');
+        setAccount('');
         setPassword('');
       } else {
         setError(data.error || '登录失败');
@@ -97,7 +97,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       console.error('Logout failed:', err);
     }
     setUser(null);
-    setEmail('');
+    setAccount('');
     setPassword('');
   };
 
@@ -139,22 +139,22 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
               {/* Login Form */}
               <form onSubmit={handleLogin} className="space-y-6">
-                {/* Email Input */}
+                {/* Account Input */}
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    邮箱
+                    账号
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Mail className="h-5 w-5 text-slate-400" />
+                      <User className="h-5 w-5 text-slate-400" />
                     </div>
                     <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      type="text"
+                      value={account}
+                      onChange={(e) => setAccount(e.target.value)}
                       required
                       className="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
-                      placeholder="your@email.com"
+                      placeholder="请输入账号"
                     />
                   </div>
                 </div>
