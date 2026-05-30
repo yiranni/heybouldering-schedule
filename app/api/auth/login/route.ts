@@ -17,9 +17,26 @@ export async function POST(request: NextRequest) {
     const normalizedAccount = String(account).trim().toLowerCase();
     const plainPassword = String(password);
 
-    const user = await prisma.user.findUnique({
-      where: { email: normalizedAccount },
-    });
+    const users = await prisma.$queryRaw<
+      Array<{
+        id: string;
+        accountId: string;
+        passwordHash: string;
+        role: 'ADMIN' | 'COACH';
+        name: string | null;
+      }>
+    >`
+      SELECT
+        id,
+        account_id AS "accountId",
+        password_hash AS "passwordHash",
+        role,
+        name
+      FROM users
+      WHERE account_id = ${normalizedAccount}
+      LIMIT 1
+    `;
+    const user = users[0] ?? null;
 
     if (!user) {
       return NextResponse.json(
@@ -38,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     const token = createSessionToken({
       id: user.id,
-      email: user.email,
+      accountId: user.accountId,
       role: user.role,
     });
 
@@ -46,7 +63,7 @@ export async function POST(request: NextRequest) {
       {
         user: {
           id: user.id,
-          email: user.email,
+          accountId: user.accountId,
           role: user.role,
           name: user.name,
         },

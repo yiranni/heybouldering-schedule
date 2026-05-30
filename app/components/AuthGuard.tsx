@@ -11,7 +11,7 @@ type AuthRole = 'ADMIN' | 'COACH';
 
 type AuthUser = {
   id: string;
-  email: string;
+  accountId: string;
   role: AuthRole;
   name?: string | null;
 };

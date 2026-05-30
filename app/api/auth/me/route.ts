@@ -7,15 +7,24 @@ export async function GET(request: NextRequest) {
     const session = getSessionFromRequest(request);
     if (!session) return unauthorized("请先登录");
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        name: true,
-      },
-    });
+    const users = await prisma.$queryRaw<
+      Array<{
+        id: string;
+        accountId: string;
+        role: "ADMIN" | "COACH";
+        name: string | null;
+      }>
+    >`
+      SELECT
+        id,
+        account_id AS "accountId",
+        role,
+        name
+      FROM users
+      WHERE id = ${session.userId}
+      LIMIT 1
+    `;
+    const user = users[0] ?? null;
 
     if (!user) {
       const response = NextResponse.json({ error: "用户不存在" }, { status: 401 });

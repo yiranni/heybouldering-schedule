@@ -7,14 +7,14 @@ export type Role = "ADMIN" | "COACH";
 
 type SessionPayload = {
   userId: string;
-  email: string;
+  accountId: string;
   role: Role;
   exp: number;
 };
 
 export type AuthSession = {
   userId: string;
-  email: string;
+  accountId: string;
   role: Role;
 };
 
@@ -43,7 +43,7 @@ function decodePayload(encoded: string): SessionPayload | null {
     const parsed = JSON.parse(raw) as SessionPayload;
     if (
       typeof parsed.userId !== "string" ||
-      typeof parsed.email !== "string" ||
+      typeof parsed.accountId !== "string" ||
       typeof parsed.role !== "string" ||
       typeof parsed.exp !== "number"
     ) {
@@ -60,12 +60,12 @@ function decodePayload(encoded: string): SessionPayload | null {
 
 export function createSessionToken(user: {
   id: string;
-  email: string;
+  accountId: string;
   role: Role;
 }): string {
   const payload: SessionPayload = {
     userId: user.id,
-    email: user.email,
+    accountId: user.accountId,
     role: user.role,
     exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
   };
@@ -84,7 +84,7 @@ export function verifySessionToken(token: string): AuthSession | null {
   if (payload.exp <= Math.floor(Date.now() / 1000)) return null;
   return {
     userId: payload.userId,
-    email: payload.email,
+    accountId: payload.accountId,
     role: payload.role,
   };
 }
