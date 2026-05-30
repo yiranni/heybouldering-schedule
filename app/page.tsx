@@ -32,6 +32,7 @@ import CollapsiblePanel from "./components/CollapsiblePanel";
 import ExportImageModal from "./components/ExportImageModal";
 import DateRangeModal from "./components/DateRangeModal";
 import { useAuth } from "./components/AuthGuard";
+import TopNavMenu from "./components/TopNavMenu";
 
 export default function RockGymScheduler() {
   const { user } = useAuth();
@@ -549,11 +550,7 @@ export default function RockGymScheduler() {
             <div className="bg-emerald-500 p-2 rounded-lg">
               <Calendar className="w-6 h-6 text-white" />
             </div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold tracking-tight">嘿抱工作后台</h1>
-              <span className="text-slate-400">·</span>
-              <span className="text-lg font-medium text-emerald-400">排班</span>
-            </div>
+            <TopNavMenu current="schedule" />
           </div>
 
           <div className="flex items-center gap-4 bg-slate-800 p-1.5 rounded-lg border border-slate-700">

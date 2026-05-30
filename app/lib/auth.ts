@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const SESSION_COOKIE_NAME = "scheduler_session";
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
-type Role = "ADMIN" | "COACH";
+export type Role = "ADMIN" | "COACH";
 
 type SessionPayload = {
   userId: string;

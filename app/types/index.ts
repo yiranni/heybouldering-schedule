@@ -50,6 +50,7 @@ export type CoachAvailability = {
 
 export type Coach = {
   id: string;
+  userId?: string | null;
   name: string;
   color: string;
   avatar: string;
@@ -116,4 +117,31 @@ export type LessonRecordFilters = {
   endDate?: string;
   coachId?: string;
   lessonTypeId?: string;
+};
+
+export type SalesRecord = {
+  id: string;
+  coachId: string;
+  productName: string;
+  amount: number;
+  soldAt: string; // ISO datetime
+  note?: string | null;
+  coach?: {
+    id: string;
+    name: string;
+    color: string;
+    avatar: string;
+  };
+};
+
+export type SalesRecordFilters = {
+  startDate?: string;
+  endDate?: string;
+  coachId?: string;
+};
+
+export type CommissionRule = {
+  id: string;
+  minAmount: number;
+  commissionRate: number; // 0~1
 };

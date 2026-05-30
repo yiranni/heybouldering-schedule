@@ -21,6 +21,7 @@ model User {
   passwordHash String
   role         Role
   name         String?
+  coach        Coach?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -45,6 +46,7 @@ model Store {
 
 model Coach {
   id              String         @id @default(cuid())
+  userId          String?        @unique
   name            String
   color           String
   avatar          String
@@ -60,6 +62,8 @@ model Coach {
   schedules       Schedule[]
   stores          CoachStore[]
   lessonRecords   LessonRecord[]
+  salesRecords    SalesRecord[]
+  user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("coaches")
 }
@@ -131,4 +135,34 @@ model LessonRecord {
   @@index([dateStr])
   @@index([coachId])
   @@index([lessonTypeId])
+}
+
+// 销售记录
+model SalesRecord {
+  id          String       @id @default(cuid())
+  coachId     String
+  productName String
+  amount      Float
+  soldAt      DateTime
+  note        String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  coach       Coach        @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@map("sales_records")
+  @@index([coachId])
+  @@index([soldAt])
+}
+
+// 提成规则：总额 >= minAmount 时，按 commissionRate 抽成
+model CommissionRule {
+  id             String   @id @default(cuid())
+  minAmount      Float
+  commissionRate Float    // 0~1，例如 0.05 = 5%
+  archived       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("commission_rules")
+  @@index([minAmount])
 }
