@@ -7,6 +7,7 @@ import TopNavMenu from "../components/TopNavMenu";
 import { useCoaches } from "../hooks/useCoaches";
 import { useSalesRecords } from "../hooks/useSalesRecords";
 import { useCommissionRules } from "../hooks/useCommissionRules";
+import { useSalesCategories } from "../hooks/useSalesCategories";
 import CommissionRuleList from "../components/CommissionRuleList";
 import SalesRecordModal from "../components/SalesRecordModal";
 import SalesRecordTable from "../components/SalesRecordTable";
@@ -33,6 +34,11 @@ export default function SalesPage() {
     createSalesRecord,
     deleteSalesRecord,
   } = useSalesRecords();
+  const {
+    categories,
+    loading: categoriesLoading,
+    error: categoriesError,
+  } = useSalesCategories();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const myCoach = useMemo(
@@ -42,8 +48,8 @@ export default function SalesPage() {
     [coaches, user?.id, user?.name]
   );
 
-  const loading = coachesLoading || recordsLoading || rulesLoading;
-  const error = coachesError || recordsError || rulesError;
+  const loading = coachesLoading || recordsLoading || rulesLoading || categoriesLoading;
+  const error = coachesError || recordsError || rulesError || categoriesError;
   const totalAmount = salesRecords.reduce((sum, r) => sum + (r.amount || 0), 0);
   const matchedRule = [...commissionRules]
     .sort((a, b) => b.minAmount - a.minAmount)
@@ -103,6 +109,7 @@ export default function SalesPage() {
         isOpen={showCreateModal}
         canSelectCoach={isAdmin}
         coaches={coaches}
+        categories={categories}
         defaultCoachId={myCoach?.id}
         onClose={() => setShowCreateModal(false)}
         onCreate={async (payload) => {

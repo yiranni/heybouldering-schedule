@@ -44,6 +44,12 @@ export async function GET(request: NextRequest) {
             avatar: true,
           },
         },
+        salesCategory: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: [{ soldAt: "desc" }, { createdAt: "desc" }],
     });
@@ -64,14 +70,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    const salesCategoryId = String(body?.salesCategoryId || "").trim();
     const productName = String(body?.productName || "").trim();
     const soldAt = String(body?.soldAt || "");
     const amount = Number(body?.amount);
     const note = body?.note ? String(body.note) : null;
 
-    if (!productName || !soldAt || Number.isNaN(amount)) {
+    if (!salesCategoryId || !productName || !soldAt || Number.isNaN(amount)) {
       return NextResponse.json(
-        { error: "productName/soldAt/amount 为必填字段" },
+        { error: "salesCategoryId/productName/soldAt/amount 为必填字段" },
         { status: 400 }
       );
     }
@@ -87,9 +94,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "coachId 无效" }, { status: 400 });
     }
 
+    const categoryExists = await prisma.salesCategory.findUnique({
+      where: { id: salesCategoryId },
+      select: { id: true },
+    });
+    if (!categoryExists) {
+      return NextResponse.json({ error: "salesCategoryId 无效" }, { status: 400 });
+    }
+
     const record = await prisma.salesRecord.create({
       data: {
         coachId: createCoachId,
+        salesCategoryId,
         productName,
         amount,
         soldAt: new Date(soldAt),
@@ -102,6 +118,12 @@ export async function POST(request: NextRequest) {
             name: true,
             color: true,
             avatar: true,
+          },
+        },
+        salesCategory: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },

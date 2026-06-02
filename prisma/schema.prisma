@@ -141,6 +141,7 @@ model LessonRecord {
 model SalesRecord {
   id          String       @id @default(cuid())
   coachId     String
+  salesCategoryId String?
   productName String
   amount      Float
   soldAt      DateTime
@@ -148,10 +149,22 @@ model SalesRecord {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   coach       Coach        @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  salesCategory SalesCategory? @relation(fields: [salesCategoryId], references: [id], onDelete: SetNull)
 
   @@map("sales_records")
   @@index([coachId])
+  @@index([salesCategoryId])
   @@index([soldAt])
+}
+
+model SalesCategory {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  salesRecords SalesRecord[]
+
+  @@map("sales_categories")
 }
 
 // 提成规则：总额 >= minAmount 时，按 commissionRate 抽成

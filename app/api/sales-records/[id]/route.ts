@@ -25,12 +25,27 @@ export async function PUT(
     const body = await request.json();
     const updateData: {
       coachId?: string;
+      salesCategoryId?: string | null;
       productName?: string;
       amount?: number;
       soldAt?: Date;
       note?: string | null;
     } = {};
 
+    if (body?.salesCategoryId !== undefined) {
+      const salesCategoryId = String(body.salesCategoryId).trim();
+      if (!salesCategoryId) {
+        return NextResponse.json({ error: "salesCategoryId 不能为空" }, { status: 400 });
+      }
+      const categoryExists = await prisma.salesCategory.findUnique({
+        where: { id: salesCategoryId },
+        select: { id: true },
+      });
+      if (!categoryExists) {
+        return NextResponse.json({ error: "salesCategoryId 无效" }, { status: 400 });
+      }
+      updateData.salesCategoryId = salesCategoryId;
+    }
     if (body?.productName !== undefined) updateData.productName = String(body.productName).trim();
     if (body?.soldAt !== undefined) updateData.soldAt = new Date(String(body.soldAt));
     if (body?.amount !== undefined) {
@@ -56,6 +71,12 @@ export async function PUT(
             name: true,
             color: true,
             avatar: true,
+          },
+        },
+        salesCategory: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },

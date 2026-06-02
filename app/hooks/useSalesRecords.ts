@@ -44,7 +44,7 @@ export function useSalesRecords(initialFilters?: SalesRecordFilters) {
 
   const createSalesRecord = useCallback(
     async (
-      record: Omit<SalesRecord, 'id' | 'coach'>
+      record: Omit<SalesRecord, 'id' | 'coach' | 'salesCategory'>
     ): Promise<SalesRecord> => {
       const response = await fetch('/api/sales-records', {
         method: 'POST',
@@ -62,7 +62,7 @@ export function useSalesRecords(initialFilters?: SalesRecordFilters) {
   const updateSalesRecord = useCallback(
     async (
       id: string,
-      updates: Partial<Omit<SalesRecord, 'id' | 'coach'>>
+      updates: Partial<Omit<SalesRecord, 'id' | 'coach' | 'salesCategory'>>
     ): Promise<SalesRecord> => {
       const response = await fetch(`/api/sales-records/${id}`, {
         method: 'PUT',
