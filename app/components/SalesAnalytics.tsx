@@ -132,7 +132,7 @@ export default function SalesAnalytics({
                     <Cell key={`cell-${entry.name}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(value: number) => formatCurrency(Number(value))} />
+                <Tooltip formatter={(value) => formatCurrency(Number(value ?? 0))} />
               </PieChart>
             </ResponsiveContainer>
           )}
