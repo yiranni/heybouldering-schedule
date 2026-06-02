@@ -3,11 +3,32 @@
 import { useCallback, useEffect, useState } from 'react';
 import { SalesRecord, SalesRecordFilters } from '../types';
 
+function getCurrentMonthFilters(): SalesRecordFilters {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const startDate = new Date(year, month, 1);
+  const endDate = new Date(year, month + 1, 0);
+  const toDateStr = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  return {
+    startDate: toDateStr(startDate),
+    endDate: toDateStr(endDate),
+  };
+}
+
 export function useSalesRecords(initialFilters?: SalesRecordFilters) {
   const [salesRecords, setSalesRecords] = useState<SalesRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<SalesRecordFilters>(initialFilters || {});
+  const [filters, setFilters] = useState<SalesRecordFilters>(
+    initialFilters || getCurrentMonthFilters()
+  );
 
   const fetchSalesRecords = useCallback(
     async (currentFilters?: SalesRecordFilters) => {

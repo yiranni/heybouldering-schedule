@@ -11,6 +11,7 @@ import { useSalesCategories } from "../hooks/useSalesCategories";
 import CommissionRuleList from "../components/CommissionRuleList";
 import SalesRecordModal from "../components/SalesRecordModal";
 import SalesRecordTable from "../components/SalesRecordTable";
+import SalesAnalytics from "../components/SalesAnalytics";
 
 export default function SalesPage() {
   const { user } = useAuth();
@@ -84,6 +85,15 @@ export default function SalesPage() {
             onAddRule={createCommissionRule}
             onUpdateRule={updateCommissionRule}
             onDeleteRule={deleteCommissionRule}
+          />
+        )}
+
+        {isAdmin && (
+          <SalesAnalytics
+            records={salesRecords}
+            coaches={coaches}
+            commissionRate={matchedRate}
+            hideCoachBarChart={Boolean(filters.coachId)}
           />
         )}
 
