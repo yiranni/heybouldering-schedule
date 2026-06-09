@@ -159,6 +159,9 @@ export type CommissionRule = {
 export type PayrollRow = {
   coachId: string;
   coachName: string;
+  employmentType: EmploymentType;
+  monthHours: number;
+  hourlyRate?: number | null;
   basicSalary: number;
   salesAmount: number;
   salesCommission: number;

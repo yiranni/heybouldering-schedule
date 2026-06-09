@@ -13,7 +13,21 @@ function formatCurrency(value: number): string {
 export default function PayrollPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
-  const { month, rows, loading, saving, error, changeMonth, updateRow, savePayroll } = usePayroll();
+  const {
+    month,
+    rows,
+    loading,
+    saving,
+    error,
+    changeMonth,
+    updateRow,
+    updatePartTimeHourlyRate,
+    savePayroll,
+  } = usePayroll();
+  const partTimeHourlyRate = useMemo(() => {
+    const firstPartTime = rows.find((row) => row.employmentType === "PART_TIME");
+    return firstPartTime?.hourlyRate ?? 20;
+  }, [rows]);
 
   const totals = useMemo(() => {
     const totalLaborCost = rows.reduce((sum, row) => sum + row.totalSalary, 0);
@@ -83,7 +97,19 @@ export default function PayrollPage() {
           <div className="px-6 py-4 border-b border-slate-200">
             <h2 className="text-lg font-semibold text-slate-800">工资计算（按月）</h2>
             <p className="text-sm text-slate-500 mt-1">
-              销售提成自动计算；基本工资支持按上月自动带入；课时费可手动编辑。
+              销售提成自动计算；全职基本工资支持按上月自动带入；兼职基本工资按当月工时自动计算（可编辑，时薪：
+              <input
+                type="number"
+                value={partTimeHourlyRate}
+                min={0}
+                step="0.1"
+                onChange={(e) => updatePartTimeHourlyRate(Number(e.target.value || 0))}
+                onBlur={() => {
+                  savePayroll().catch(() => {});
+                }}
+                className="mx-1 w-20 px-1.5 py-0.5 border border-slate-300 rounded text-right text-xs bg-white align-middle"
+              />
+              元/小时）；课时费可手动编辑。
             </p>
           </div>
 
@@ -114,7 +140,31 @@ export default function PayrollPage() {
                 ) : (
                   rows.map((row) => (
                     <tr key={row.coachId} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 text-sm text-slate-700">{row.coachName}</td>
+                      <td className="px-4 py-3 text-sm text-slate-700">
+                        <div className="font-medium">{row.coachName}</div>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          {row.employmentType === "PART_TIME" ? (
+                            <span className="inline-flex items-center gap-1">
+                              <span>兼职 · 本月工时</span>
+                              <input
+                                type="number"
+                                value={row.monthHours}
+                                min={0}
+                                step="0.1"
+                                onChange={(e) =>
+                                  updateRow(row.coachId, {
+                                    monthHours: Number(e.target.value || 0),
+                                  })
+                                }
+                                className="w-20 px-1.5 py-0.5 border border-slate-300 rounded text-right text-xs bg-white"
+                              />
+                              <span>h</span>
+                            </span>
+                          ) : (
+                            "全职"
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-right">
                         <input
                           type="number"

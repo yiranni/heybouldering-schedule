@@ -185,6 +185,8 @@ model PayrollRecord {
   id              String   @id @default(cuid())
   month           String   // YYYY-MM
   coachId         String
+  workedHours     Float?
+  hourlyRate      Float?
   basicSalary     Float
   salesCommission Float
   lessonFee       Float

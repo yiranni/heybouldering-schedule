@@ -10,6 +10,8 @@ function getCurrentMonth(): string {
   return `${y}-${m}`;
 }
 
+const DEFAULT_PART_TIME_HOURLY_RATE = 20;
+
 export function usePayroll() {
   const [month, setMonth] = useState<string>(getCurrentMonth());
   const [rows, setRows] = useState<PayrollRow[]>([]);
@@ -44,14 +46,32 @@ export function usePayroll() {
     fetchPayroll();
   }, [fetchPayroll]);
 
-  const updateRow = useCallback((coachId: string, patch: Partial<Pick<PayrollRow, 'basicSalary' | 'lessonFee'>>) => {
+  const updateRow = useCallback((coachId: string, patch: Partial<Pick<PayrollRow, 'monthHours' | 'hourlyRate' | 'basicSalary' | 'lessonFee'>>) => {
     setRows((prev) =>
       prev.map((row) => {
         if (row.coachId !== coachId) return row;
-        const basicSalary = patch.basicSalary ?? row.basicSalary;
+        const monthHours = patch.monthHours ?? row.monthHours;
+        const hourlyRate = patch.hourlyRate ?? row.hourlyRate ?? DEFAULT_PART_TIME_HOURLY_RATE;
+        const basicSalaryFromHours =
+          row.employmentType === 'PART_TIME'
+            ? Number((monthHours * hourlyRate).toFixed(2))
+            : row.basicSalary;
+        const basicSalary =
+          patch.basicSalary !== undefined ? patch.basicSalary : basicSalaryFromHours;
         const lessonFee = patch.lessonFee ?? row.lessonFee;
         const totalSalary = Number((basicSalary + row.salesCommission + lessonFee).toFixed(2));
-        return { ...row, basicSalary, lessonFee, totalSalary };
+        return { ...row, monthHours, hourlyRate, basicSalary, lessonFee, totalSalary };
+      })
+    );
+  }, []);
+
+  const updatePartTimeHourlyRate = useCallback((hourlyRate: number) => {
+    setRows((prev) =>
+      prev.map((row) => {
+        if (row.employmentType !== 'PART_TIME') return row;
+        const basicSalary = Number((row.monthHours * hourlyRate).toFixed(2));
+        const totalSalary = Number((basicSalary + row.salesCommission + row.lessonFee).toFixed(2));
+        return { ...row, hourlyRate, basicSalary, totalSalary };
       })
     );
   }, []);
@@ -66,6 +86,8 @@ export function usePayroll() {
           month,
           rows: rows.map((row) => ({
             coachId: row.coachId,
+            monthHours: row.monthHours,
+            hourlyRate: row.hourlyRate ?? DEFAULT_PART_TIME_HOURLY_RATE,
             basicSalary: row.basicSalary,
             lessonFee: row.lessonFee,
           })),
@@ -96,6 +118,7 @@ export function usePayroll() {
     error,
     changeMonth,
     updateRow,
+    updatePartTimeHourlyRate,
     savePayroll,
     refreshPayroll: fetchPayroll,
   };
