@@ -550,7 +550,7 @@ export default function RockGymScheduler() {
             <div className="bg-emerald-500 p-2 rounded-lg">
               <Calendar className="w-6 h-6 text-white" />
             </div>
-            <TopNavMenu current="schedule" />
+            <TopNavMenu current="schedule" isAdmin={canEdit} />
           </div>
 
           <div className="flex items-center gap-4 bg-slate-800 p-1.5 rounded-lg border border-slate-700">

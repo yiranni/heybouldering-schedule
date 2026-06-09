@@ -5,17 +5,20 @@ import { ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type TopNavMenuProps = {
-  current: 'schedule' | 'sales';
+  current: 'schedule' | 'sales' | 'payroll';
+  isAdmin?: boolean;
 };
 
-const items: Array<{ id: 'schedule' | 'sales'; label: string; href: string }> = [
+const items: Array<{ id: 'schedule' | 'sales' | 'payroll'; label: string; href: string; adminOnly?: boolean }> = [
   { id: 'schedule', label: '排班', href: '/' },
   { id: 'sales', label: '销售记录', href: '/sales' },
+  { id: 'payroll', label: '工资计算', href: '/payroll', adminOnly: true },
 ];
 
-export default function TopNavMenu({ current }: TopNavMenuProps) {
+export default function TopNavMenu({ current, isAdmin = false }: TopNavMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const visibleItems = items.filter((item) => !item.adminOnly || isAdmin);
 
   useEffect(() => {
     const onMouseDown = (e: MouseEvent) => {
@@ -27,7 +30,7 @@ export default function TopNavMenu({ current }: TopNavMenuProps) {
     return () => document.removeEventListener('mousedown', onMouseDown);
   }, []);
 
-  const currentItem = items.find((item) => item.id === current) || items[0];
+  const currentItem = visibleItems.find((item) => item.id === current) || visibleItems[0];
 
   return (
     <div className="flex items-center gap-2">
@@ -44,7 +47,7 @@ export default function TopNavMenu({ current }: TopNavMenuProps) {
 
         {open && (
           <div className="absolute top-full left-0 mt-2 bg-slate-800 rounded-lg shadow-xl border border-slate-700 py-1 min-w-[140px] z-50">
-            {items.map((item) => (
+            {visibleItems.map((item) => (
               <Link
                 key={item.id}
                 href={item.href}

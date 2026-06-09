@@ -155,3 +155,13 @@ export type CommissionRule = {
   minAmount: number;
   commissionRate: number; // 0~1
 };
+
+export type PayrollRow = {
+  coachId: string;
+  coachName: string;
+  basicSalary: number;
+  salesAmount: number;
+  salesCommission: number;
+  lessonFee: number;
+  totalSalary: number;
+};

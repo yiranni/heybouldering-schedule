@@ -65,7 +65,7 @@ export default function SalesPage() {
             <div className="bg-emerald-500 p-2 rounded-lg">
               <Calendar className="w-6 h-6 text-white" />
             </div>
-            <TopNavMenu current="sales" />
+            <TopNavMenu current="sales" isAdmin={isAdmin} />
           </div>
 
           <button

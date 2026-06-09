@@ -63,6 +63,7 @@ model Coach {
   stores          CoachStore[]
   lessonRecords   LessonRecord[]
   salesRecords    SalesRecord[]
+  payrollRecords  PayrollRecord[]
   user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("coaches")
@@ -178,4 +179,21 @@ model CommissionRule {
 
   @@map("commission_rules")
   @@index([minAmount])
+}
+
+model PayrollRecord {
+  id              String   @id @default(cuid())
+  month           String   // YYYY-MM
+  coachId         String
+  basicSalary     Float
+  salesCommission Float
+  lessonFee       Float
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  coach           Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@map("payroll_records")
+  @@unique([month, coachId])
+  @@index([month])
+  @@index([coachId])
 }
