@@ -28,6 +28,13 @@ export default function PayrollPage() {
     const firstPartTime = rows.find((row) => row.employmentType === "PART_TIME");
     return firstPartTime?.hourlyRate ?? 20;
   }, [rows]);
+  const [selectedYearStr, selectedMonthStr] = month.split("-");
+  const selectedYear = Number(selectedYearStr);
+  const selectedMonth = Number(selectedMonthStr);
+  const yearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 7 }, (_, idx) => currentYear - 3 + idx);
+  }, []);
 
   const totals = useMemo(() => {
     const totalLaborCost = rows.reduce((sum, row) => sum + row.totalSalary, 0);
@@ -67,12 +74,32 @@ export default function PayrollPage() {
             <TopNavMenu current="payroll" isAdmin />
           </div>
           <div className="flex items-center gap-2">
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => changeMonth(e.target.value)}
-              className="px-3 py-2 rounded-md border border-slate-300 text-slate-700"
-            />
+            <div className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1.5">
+              <select
+                value={selectedYear}
+                onChange={(e) => changeMonth(`${e.target.value}-${String(selectedMonth).padStart(2, "0")}`)}
+                className="text-slate-700 bg-transparent outline-none"
+              >
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+              <span className="text-slate-500 text-sm">年</span>
+              <select
+                value={selectedMonth}
+                onChange={(e) => changeMonth(`${selectedYear}-${String(e.target.value).padStart(2, "0")}`)}
+                className="text-slate-700 bg-transparent outline-none"
+              >
+                {Array.from({ length: 12 }, (_, idx) => idx + 1).map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <span className="text-slate-500 text-sm">月</span>
+            </div>
             <button
               onClick={async () => {
                 try {
