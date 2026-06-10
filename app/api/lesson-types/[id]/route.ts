@@ -1,9 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { forbidden, getSessionFromRequest, unauthorized } from '@/app/lib/auth';
 
 // GET /api/lesson-types/[id] - 获取单个课程类型
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -30,10 +31,14 @@ export async function GET(
 
 // PUT /api/lesson-types/[id] - 更新课程类型
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+    if (session.role !== 'ADMIN') return forbidden('仅管理员可编辑课程类型');
+
     const body = await request.json();
     const { name, commission, pricingType } = body;
 
@@ -59,10 +64,14 @@ export async function PUT(
 
 // DELETE /api/lesson-types/[id] - 删除课程类型（软删除）
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+    if (session.role !== 'ADMIN') return forbidden('仅管理员可编辑课程类型');
+
     await prisma.lessonType.update({
       where: { id: params.id },
       data: { archived: true },

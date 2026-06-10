@@ -1,12 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { forbidden, unauthorized } from '@/app/lib/auth';
+import { resolveSalesAccess } from '@/app/lib/salesAccess';
 
 // GET /api/lesson-records/[id] - 获取单个课程记录
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const access = await resolveSalesAccess(request);
+    if (!access) return unauthorized('请先登录');
+
     const lessonRecord = await prisma.lessonRecord.findUnique({
       where: { id: params.id },
       include: {
@@ -35,6 +40,9 @@ export async function GET(
         { status: 404 }
       );
     }
+    if (!access.isAdmin && lessonRecord.coachId !== access.coachId) {
+      return forbidden('无权限查看他人课程记录');
+    }
 
     return NextResponse.json(lessonRecord);
   } catch (error) {
@@ -48,10 +56,24 @@ export async function GET(
 
 // PUT /api/lesson-records/[id] - 更新课程记录
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const access = await resolveSalesAccess(request);
+    if (!access) return unauthorized('请先登录');
+
+    const existing = await prisma.lessonRecord.findUnique({
+      where: { id: params.id },
+      select: { id: true, coachId: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Lesson record not found' }, { status: 404 });
+    }
+    if (!access.isAdmin && existing.coachId !== access.coachId) {
+      return forbidden('无权限修改他人课程记录');
+    }
+
     const body = await request.json();
     const { dateStr, lessonTypeId, coachId, studentCount, note } = body;
 
@@ -65,7 +87,7 @@ export async function PUT(
 
     if (dateStr !== undefined) updateData.dateStr = dateStr;
     if (lessonTypeId !== undefined) updateData.lessonTypeId = lessonTypeId;
-    if (coachId !== undefined) updateData.coachId = coachId;
+    if (coachId !== undefined && access.isAdmin) updateData.coachId = coachId;
     if (studentCount !== undefined) updateData.studentCount = studentCount;
     if (note !== undefined) updateData.note = note || null;
 
@@ -104,10 +126,24 @@ export async function PUT(
 
 // DELETE /api/lesson-records/[id] - 删除课程记录
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
+    const access = await resolveSalesAccess(request);
+    if (!access) return unauthorized('请先登录');
+
+    const existing = await prisma.lessonRecord.findUnique({
+      where: { id: params.id },
+      select: { id: true, coachId: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: 'Lesson record not found' }, { status: 404 });
+    }
+    if (!access.isAdmin && existing.coachId !== access.coachId) {
+      return forbidden('无权限删除他人课程记录');
+    }
+
     await prisma.lessonRecord.delete({
       where: { id: params.id },
     });

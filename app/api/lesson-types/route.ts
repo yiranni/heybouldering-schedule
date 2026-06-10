@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { forbidden, getSessionFromRequest, unauthorized } from '@/app/lib/auth';
 
 // GET /api/lesson-types - 获取所有课程类型
 export async function GET() {
@@ -19,8 +20,12 @@ export async function GET() {
 }
 
 // POST /api/lesson-types - 创建新课程类型
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const session = getSessionFromRequest(request);
+    if (!session) return unauthorized('请先登录');
+    if (session.role !== 'ADMIN') return forbidden('仅管理员可编辑课程类型');
+
     const body = await request.json();
     const { name, commission, pricingType } = body;
 

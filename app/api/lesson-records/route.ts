@@ -1,9 +1,17 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
+import { forbidden, unauthorized } from '@/app/lib/auth';
+import { resolveSalesAccess } from '@/app/lib/salesAccess';
 
 // GET /api/lesson-records - 获取课程记录列表（支持筛选）
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
+    const access = await resolveSalesAccess(request);
+    if (!access) return unauthorized('请先登录');
+    if (!access.isAdmin && !access.coachId) {
+      return forbidden('当前账号未绑定教练档案，请联系管理员');
+    }
+
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
@@ -22,8 +30,10 @@ export async function GET(request: Request) {
       if (endDate) where.dateStr.lte = endDate;
     }
 
-    if (coachId) {
-      where.coachId = coachId;
+    if (access.isAdmin) {
+      if (coachId) where.coachId = coachId;
+    } else {
+      where.coachId = access.coachId || undefined;
     }
 
     if (lessonTypeId) {
@@ -67,10 +77,20 @@ export async function GET(request: Request) {
 }
 
 // POST /api/lesson-records - 创建课程记录
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    const access = await resolveSalesAccess(request);
+    if (!access) return unauthorized('请先登录');
+    if (!access.isAdmin && !access.coachId) {
+      return forbidden('当前账号未绑定教练档案，请联系管理员');
+    }
+
     const body = await request.json();
-    const { dateStr, lessonTypeId, coachId, studentCount, note } = body;
+    const dateStr = String(body?.dateStr || '');
+    const lessonTypeId = String(body?.lessonTypeId || '');
+    const note = body?.note ? String(body.note) : null;
+    const studentCount = Number(body?.studentCount ?? 1);
+    const coachId = access.isAdmin ? String(body?.coachId || '') : (access.coachId || '');
 
     if (!dateStr || !lessonTypeId || !coachId) {
       return NextResponse.json(
@@ -79,13 +99,17 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!Number.isFinite(studentCount) || studentCount < 1) {
+      return NextResponse.json({ error: '人数必须大于等于 1' }, { status: 400 });
+    }
+
     const lessonRecord = await prisma.lessonRecord.create({
       data: {
         dateStr,
         lessonTypeId,
         coachId,
-        studentCount: studentCount || 1,
-        note: note || null,
+        studentCount,
+        note,
       },
       include: {
         coach: {

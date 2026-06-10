@@ -5,13 +5,14 @@ import { ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type TopNavMenuProps = {
-  current: 'schedule' | 'sales' | 'payroll';
+  current: 'schedule' | 'sales' | 'payroll' | 'lessons';
   isAdmin?: boolean;
 };
 
-const items: Array<{ id: 'schedule' | 'sales' | 'payroll'; label: string; href: string; adminOnly?: boolean }> = [
+const items: Array<{ id: 'schedule' | 'sales' | 'payroll' | 'lessons'; label: string; href: string; adminOnly?: boolean }> = [
   { id: 'schedule', label: '排班', href: '/' },
   { id: 'sales', label: '销售记录', href: '/sales' },
+  { id: 'lessons', label: '课程记录', href: '/lessons' },
   { id: 'payroll', label: '工资计算', href: '/payroll', adminOnly: true },
 ];
 
