@@ -1,13 +1,37 @@
 "use client";
 
-import { Calendar, Save } from "lucide-react";
-import { useMemo } from "react";
+import { Calendar, List, Save, Settings, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import TopNavMenu from "../components/TopNavMenu";
 import { useAuth } from "../components/AuthGuard";
 import { usePayroll } from "../hooks/usePayroll";
 
 function formatCurrency(value: number): string {
   return `¥${value.toFixed(2)}`;
+}
+
+type SalesDetailItem = {
+  id: string;
+  soldAt: string;
+  productName: string;
+  amount: number;
+  note?: string | null;
+  salesCategory?: { id: string; name: string } | null;
+};
+
+function getMonthDateRange(month: string): { startDate: string; endDate: string } {
+  const [yearStr, monthStr] = month.split("-");
+  const year = Number(yearStr);
+  const monthIndex = Number(monthStr) - 1;
+  const start = new Date(year, monthIndex, 1);
+  const end = new Date(year, monthIndex + 1, 0);
+  const toDateStr = (date: Date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+  return { startDate: toDateStr(start), endDate: toDateStr(end) };
 }
 
 export default function PayrollPage() {
@@ -35,6 +59,14 @@ export default function PayrollPage() {
     const currentYear = new Date().getFullYear();
     return Array.from({ length: 7 }, (_, idx) => currentYear - 3 + idx);
   }, []);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerTitle, setDrawerTitle] = useState("");
+  const [salesDetails, setSalesDetails] = useState<SalesDetailItem[]>([]);
+  const [drawerCommissionRate, setDrawerCommissionRate] = useState(0);
+  const [salesDetailsLoading, setSalesDetailsLoading] = useState(false);
+  const [salesDetailsError, setSalesDetailsError] = useState<string | null>(null);
+  const [salaryConfigOpen, setSalaryConfigOpen] = useState(false);
+  const [salaryDraft, setSalaryDraft] = useState<Record<string, number>>({});
 
   const totals = useMemo(() => {
     const totalLaborCost = rows.reduce((sum, row) => sum + row.totalSalary, 0);
@@ -42,6 +74,65 @@ export default function PayrollPage() {
       totalLaborCost: Number(totalLaborCost.toFixed(2)),
     };
   }, [rows]);
+
+  const openSalesDetails = async (
+    coachId: string,
+    coachName: string,
+    salesAmount: number,
+    salesCommission: number
+  ) => {
+    setDrawerTitle(`${coachName} · ${month} 销售明细`);
+    setDrawerCommissionRate(salesAmount > 0 ? salesCommission / salesAmount : 0);
+    setDrawerOpen(true);
+    setSalesDetails([]);
+    setSalesDetailsError(null);
+    setSalesDetailsLoading(true);
+    try {
+      const { startDate, endDate } = getMonthDateRange(month);
+      const params = new URLSearchParams({
+        coachId,
+        startDate,
+        endDate,
+      });
+      const response = await fetch(`/api/sales-records?${params.toString()}`);
+      if (!response.ok) throw new Error("加载销售明细失败");
+      const data = await response.json();
+      setSalesDetails(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setSalesDetailsError(err instanceof Error ? err.message : "加载销售明细失败");
+    } finally {
+      setSalesDetailsLoading(false);
+    }
+  };
+
+  const fullTimeRows = useMemo(
+    () => rows.filter((row) => row.employmentType === "FULL_TIME"),
+    [rows]
+  );
+
+  const openSalaryConfig = () => {
+    const initialDraft: Record<string, number> = {};
+    fullTimeRows.forEach((row) => {
+      initialDraft[row.coachId] = row.basicSalary;
+    });
+    setSalaryDraft(initialDraft);
+    setSalaryConfigOpen(true);
+  };
+
+  const applySalaryConfig = async () => {
+    fullTimeRows.forEach((row) => {
+      updateRow(row.coachId, {
+        basicSalary: Number(salaryDraft[row.coachId] ?? row.basicSalary),
+      });
+    });
+    setSalaryConfigOpen(false);
+    try {
+      await savePayroll();
+      alert("工资配置已保存");
+    } catch {
+      alert("工资配置保存失败");
+    }
+  };
 
   if (!isAdmin) {
     return (
@@ -101,6 +192,13 @@ export default function PayrollPage() {
               <span className="text-slate-500 text-sm">月</span>
             </div>
             <button
+              onClick={openSalaryConfig}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200"
+            >
+              <Settings className="w-4 h-4" />
+              工资配置
+            </button>
+            <button
               onClick={async () => {
                 try {
                   await savePayroll();
@@ -124,7 +222,7 @@ export default function PayrollPage() {
           <div className="px-6 py-4 border-b border-slate-200">
             <h2 className="text-lg font-semibold text-slate-800">工资计算（按月）</h2>
             <p className="text-sm text-slate-500 mt-1">
-              销售提成自动计算；全职基本工资支持按上月自动带入；兼职基本工资按当月工时自动计算（可编辑，时薪：
+              销售提成自动计算；全职基本工资在“工资配置”中维护；兼职基本工资按当月工时自动计算（时薪：
               <input
                 type="number"
                 value={partTimeHourlyRate}
@@ -193,21 +291,28 @@ export default function PayrollPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <input
-                          type="number"
-                          value={row.basicSalary}
-                          min={0}
-                          step="0.01"
-                          onChange={(e) =>
-                            updateRow(row.coachId, {
-                              basicSalary: Number(e.target.value || 0),
-                            })
-                          }
-                          className="w-36 px-2 py-1 border border-slate-300 rounded-md text-right text-sm"
-                        />
+                        <span className="text-sm font-medium text-slate-800">
+                          {formatCurrency(row.basicSalary)}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-right text-sm text-slate-700">
-                        {formatCurrency(row.salesCommission)}
+                        <div className="inline-flex items-center gap-1">
+                          <span>{formatCurrency(row.salesCommission)}</span>
+                          <button
+                            onClick={() =>
+                              openSalesDetails(
+                                row.coachId,
+                                row.coachName,
+                                row.salesAmount,
+                                row.salesCommission
+                              )
+                            }
+                            className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700"
+                            title="查看销售明细"
+                          >
+                            <List className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <input
@@ -250,6 +355,117 @@ export default function PayrollPage() {
           </div>
         )}
       </main>
+
+      {drawerOpen && (
+        <div className="fixed inset-0 z-[60]">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setDrawerOpen(false)} />
+          <aside className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl border-l border-slate-200 flex flex-col">
+            <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-800">{drawerTitle}</h3>
+              <button
+                onClick={() => setDrawerOpen(false)}
+                className="p-1 rounded hover:bg-slate-100 text-slate-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {salesDetailsLoading ? (
+                <div className="text-sm text-slate-500">加载中...</div>
+              ) : salesDetailsError ? (
+                <div className="text-sm text-red-600">{salesDetailsError}</div>
+              ) : salesDetails.length === 0 ? (
+                <div className="text-sm text-slate-400">暂无销售记录</div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-200 rounded-md">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">时间</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">类别</th>
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">产品</th>
+                        <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">金额</th>
+                        <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">提成</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {salesDetails.map((item) => (
+                        <tr key={item.id}>
+                          <td className="px-3 py-2 text-slate-600">
+                            {new Date(item.soldAt).toLocaleString("zh-CN")}
+                          </td>
+                          <td className="px-3 py-2 text-slate-600">{item.salesCategory?.name || "其他"}</td>
+                          <td className="px-3 py-2 text-slate-800">{item.productName}</td>
+                          <td className="px-3 py-2 text-right text-slate-700">
+                            {formatCurrency(item.amount)}
+                          </td>
+                          <td className="px-3 py-2 text-right text-emerald-700 font-medium">
+                            {formatCurrency(Number((item.amount * drawerCommissionRate).toFixed(2)))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {salaryConfigOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-xl rounded-xl bg-white shadow-2xl border border-slate-200">
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-slate-800">全职基本工资配置</h3>
+              <button
+                onClick={() => setSalaryConfigOpen(false)}
+                className="p-1 rounded hover:bg-slate-100 text-slate-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+              {fullTimeRows.length === 0 ? (
+                <div className="text-sm text-slate-500">暂无全职教练</div>
+              ) : (
+                fullTimeRows.map((row) => (
+                  <div key={row.coachId} className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-medium text-slate-700">{row.coachName}</div>
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={salaryDraft[row.coachId] ?? 0}
+                      onChange={(e) =>
+                        setSalaryDraft((prev) => ({
+                          ...prev,
+                          [row.coachId]: Number(e.target.value || 0),
+                        }))
+                      }
+                      className="w-44 px-3 py-2 border border-slate-300 rounded-md text-right text-sm"
+                    />
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setSalaryConfigOpen(false)}
+                className="px-4 py-2 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={applySalaryConfig}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-500"
+              >
+                保存配置
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
