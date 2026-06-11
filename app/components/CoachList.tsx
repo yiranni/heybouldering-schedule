@@ -70,6 +70,17 @@ export default function CoachList({ coaches, stores, canEdit, onDragStart, onDel
       setNewStoreIds([]);
       setNewPrimaryStoreId('');
       setShowAddForm(false);
+
+      const accountInfo = (newCoach as unknown as {
+        account?: { accountId?: string; defaultPassword?: string };
+      }).account;
+      if (accountInfo?.accountId && accountInfo?.defaultPassword) {
+        alert(
+          `新增教练成功\n账号: ${accountInfo.accountId}\n初始密码: ${accountInfo.defaultPassword}`
+        );
+      } else {
+        alert('新增教练成功');
+      }
     } catch (error) {
       console.error('Failed to add coach:', error);
     }
