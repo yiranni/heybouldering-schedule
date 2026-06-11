@@ -8,18 +8,20 @@ export function useLessonTypes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchLessonTypes = useCallback(async () => {
+  const fetchLessonTypes = useCallback(async (): Promise<LessonType[]> => {
     try {
       setLoading(true);
       const response = await fetch('/api/lesson-types');
       if (!response.ok) {
         throw new Error('Failed to fetch lesson types');
       }
-      const data = await response.json();
+      const data = (await response.json()) as LessonType[];
       setLessonTypes(data);
       setError(null);
+      return data;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+      return [];
     } finally {
       setLoading(false);
     }

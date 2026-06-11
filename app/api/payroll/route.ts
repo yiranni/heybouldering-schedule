@@ -3,6 +3,11 @@ import { prisma } from "@/app/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { forbidden, unauthorized } from "@/app/lib/auth";
+import {
+  buildLessonFeeByCoach,
+  calcLessonFeesByCoachForMonth,
+  fetchLessonFeeConfig,
+} from "@/app/lib/lessonFee";
 import { resolveSalesAccess } from "@/app/lib/salesAccess";
 
 type SalesTotalRow = {
@@ -123,7 +128,8 @@ export async function GET(request: NextRequest) {
     }
     const { start, end } = getMonthRange(month);
 
-    const [coaches, records, rules, salesRows] = await Promise.all([
+    const [coaches, records, rules, salesRows, lessonTypes, lessonRecordsInMonth, savedFeeConfig] =
+      await Promise.all([
       prisma.$queryRaw<CoachRow[]>`
         SELECT
           id,
@@ -160,6 +166,27 @@ export async function GET(request: NextRequest) {
         WHERE "soldAt" >= ${start} AND "soldAt" <= ${end}
         GROUP BY "coachId"
       `,
+      prisma.lessonType.findMany({
+        where: { archived: false },
+        select: { id: true, name: true },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.lessonRecord.findMany({
+        where: {
+          dateStr: {
+            gte: `${month}-01`,
+            lte: `${month}-31`,
+          },
+        },
+        select: {
+          coachId: true,
+          dateStr: true,
+          lessonTypeId: true,
+          studentCount: true,
+        },
+        orderBy: [{ dateStr: "asc" }, { createdAt: "asc" }],
+      }),
+      fetchLessonFeeConfig(),
     ]);
 
     const [schedulesInMonth, stores] = await Promise.all([
@@ -220,6 +247,13 @@ export async function GET(request: NextRequest) {
       ])
     );
 
+    const lessonFeeByCoach = buildLessonFeeByCoach(
+      coaches,
+      lessonTypes,
+      lessonRecordsInMonth,
+      savedFeeConfig
+    );
+
     const rows = await Promise.all(
       coaches.map(async (coach: CoachRow) => {
         const current = recordByCoach.get(coach.id);
@@ -243,7 +277,7 @@ export async function GET(request: NextRequest) {
 
         const salesAmount = round2(salesByCoach.get(coach.id) || 0);
         const salesCommission = calcCommission(salesAmount, rules);
-        const lessonFee = round2(current?.lessonFee ?? 0);
+        const lessonFee = round2(lessonFeeByCoach.get(coach.id) || 0);
         const totalSalary = round2((basicSalary || 0) + salesCommission + lessonFee);
 
         return {
@@ -295,17 +329,23 @@ export async function PUT(request: NextRequest) {
         monthHours?: unknown;
         hourlyRate?: unknown;
         basicSalary?: unknown;
-        lessonFee?: unknown;
       };
       return {
-      coachId: String(item.coachId || ""),
-      monthHours: Number(item.monthHours),
-      hourlyRate: Number(item.hourlyRate),
-      basicSalary: Number(item.basicSalary),
-      lessonFee: Number(item.lessonFee),
+        coachId: String(item.coachId || ""),
+        monthHours: Number(item.monthHours),
+        hourlyRate: Number(item.hourlyRate),
+        basicSalary: Number(item.basicSalary),
       };
     });
-    if (normalizedRows.some((r) => !r.coachId || Number.isNaN(r.monthHours) || Number.isNaN(r.hourlyRate) || Number.isNaN(r.basicSalary) || Number.isNaN(r.lessonFee))) {
+    if (
+      normalizedRows.some(
+        (r) =>
+          !r.coachId ||
+          Number.isNaN(r.monthHours) ||
+          Number.isNaN(r.hourlyRate) ||
+          Number.isNaN(r.basicSalary)
+      )
+    ) {
       return NextResponse.json({ error: "rows 数据格式无效" }, { status: 400 });
     }
 
@@ -329,7 +369,11 @@ export async function PUT(request: NextRequest) {
             WHERE "soldAt" >= ${start} AND "soldAt" <= ${end} AND "coachId" IN (${Prisma.join(coachIds)})
             GROUP BY "coachId"
           `;
-    const [rules, salesRows] = await Promise.all([rulesPromise, salesPromise]);
+    const [rules, salesRows, lessonFeeByCoach] = await Promise.all([
+      rulesPromise,
+      salesPromise,
+      calcLessonFeesByCoachForMonth(month),
+    ]);
     const salesByCoach = new Map<string, number>(
       salesRows.map((r: SalesTotalRow): [string, number] => [r.coachId, Number(r.total) || 0])
     );
@@ -338,6 +382,7 @@ export async function PUT(request: NextRequest) {
       normalizedRows.map((row) => {
         const salesAmount = round2(salesByCoach.get(row.coachId) || 0);
         const salesCommission = calcCommission(salesAmount, rules);
+        const lessonFee = round2(lessonFeeByCoach.get(row.coachId) || 0);
         return prisma.$executeRaw`
           INSERT INTO payroll_records (
             id,
@@ -358,7 +403,7 @@ export async function PUT(request: NextRequest) {
             ${round2(row.monthHours)},
             ${round2(row.hourlyRate)},
             ${round2(row.basicSalary)},
-            ${round2(row.lessonFee)},
+            ${lessonFee},
             ${salesCommission},
             NOW(),
             NOW()

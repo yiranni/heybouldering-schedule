@@ -46,7 +46,7 @@ export function usePayroll() {
     fetchPayroll();
   }, [fetchPayroll]);
 
-  const updateRow = useCallback((coachId: string, patch: Partial<Pick<PayrollRow, 'monthHours' | 'hourlyRate' | 'basicSalary' | 'lessonFee'>>) => {
+  const updateRow = useCallback((coachId: string, patch: Partial<Pick<PayrollRow, 'monthHours' | 'hourlyRate' | 'basicSalary'>>) => {
     setRows((prev) =>
       prev.map((row) => {
         if (row.coachId !== coachId) return row;
@@ -58,9 +58,8 @@ export function usePayroll() {
             : row.basicSalary;
         const basicSalary =
           patch.basicSalary !== undefined ? patch.basicSalary : basicSalaryFromHours;
-        const lessonFee = patch.lessonFee ?? row.lessonFee;
-        const totalSalary = Number((basicSalary + row.salesCommission + lessonFee).toFixed(2));
-        return { ...row, monthHours, hourlyRate, basicSalary, lessonFee, totalSalary };
+        const totalSalary = Number((basicSalary + row.salesCommission + row.lessonFee).toFixed(2));
+        return { ...row, monthHours, hourlyRate, basicSalary, totalSalary };
       })
     );
   }, []);
@@ -76,7 +75,8 @@ export function usePayroll() {
     );
   }, []);
 
-  const savePayroll = useCallback(async () => {
+  const savePayroll = useCallback(async (rowsOverride?: PayrollRow[]) => {
+    const rowsToSave = rowsOverride ?? rows;
     try {
       setSaving(true);
       const response = await fetch('/api/payroll', {
@@ -84,18 +84,20 @@ export function usePayroll() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           month,
-          rows: rows.map((row) => ({
+          rows: rowsToSave.map((row) => ({
             coachId: row.coachId,
             monthHours: row.monthHours,
             hourlyRate: row.hourlyRate ?? DEFAULT_PART_TIME_HOURLY_RATE,
             basicSalary: row.basicSalary,
-            lessonFee: row.lessonFee,
           })),
         }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to save payroll');
+      }
+      if (rowsOverride) {
+        setRows(rowsToSave);
       }
       await fetchPayroll(month, { silent: true });
     } catch (err) {
@@ -105,6 +107,26 @@ export function usePayroll() {
       setSaving(false);
     }
   }, [month, rows, fetchPayroll]);
+
+  const saveSalaryConfig = useCallback(
+    async (salaryByCoachId: Record<string, number>, partTimeHourlyRate: number) => {
+      const nextRows = rows.map((row) => {
+        if (row.employmentType === 'FULL_TIME') {
+          const basicSalary = Number(salaryByCoachId[row.coachId] ?? row.basicSalary);
+          const totalSalary = Number((basicSalary + row.salesCommission + row.lessonFee).toFixed(2));
+          return { ...row, basicSalary, totalSalary };
+        }
+        if (row.employmentType === 'PART_TIME') {
+          const basicSalary = Number((row.monthHours * partTimeHourlyRate).toFixed(2));
+          const totalSalary = Number((basicSalary + row.salesCommission + row.lessonFee).toFixed(2));
+          return { ...row, hourlyRate: partTimeHourlyRate, basicSalary, totalSalary };
+        }
+        return row;
+      });
+      await savePayroll(nextRows);
+    },
+    [rows, savePayroll]
+  );
 
   const changeMonth = useCallback((nextMonth: string) => {
     setMonth(nextMonth);
@@ -120,6 +142,7 @@ export function usePayroll() {
     updateRow,
     updatePartTimeHourlyRate,
     savePayroll,
+    saveSalaryConfig,
     refreshPayroll: fetchPayroll,
   };
 }

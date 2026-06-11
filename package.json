@@ -14,7 +14,8 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "user:create-admin": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/createAdmin.ts"
+    "user:create-admin": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/createAdmin.ts",
+    "db:seed-lessons": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"CommonJS\"}' ts-node prisma/seedLessonRecords.ts"
   },
   "dependencies": {
     "docx": "^9.5.1",

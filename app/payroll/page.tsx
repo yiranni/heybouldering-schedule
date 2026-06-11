@@ -1,10 +1,18 @@
 "use client";
 
 import { Calendar, List, Save, Settings, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import TopNavMenu from "../components/TopNavMenu";
 import { useAuth } from "../components/AuthGuard";
 import { usePayroll } from "../hooks/usePayroll";
+import { useLessonTypes } from "../hooks/useLessonTypes";
+import {
+  getDefaultLessonFeeDraft,
+  isNoviceLessonTypeName,
+  type LessonFeeConfigDraft,
+  type LessonFeeDetailsResult,
+} from "../lib/lessonFee";
+import { LessonType } from "../types";
 
 function formatCurrency(value: number): string {
   return `¥${value.toFixed(2)}`;
@@ -18,6 +26,32 @@ type SalesDetailItem = {
   note?: string | null;
   salesCategory?: { id: string; name: string } | null;
 };
+
+type LessonFeeConfigApiItem = LessonFeeConfigDraft & {
+  lessonTypeId: string;
+};
+
+function buildLessonFeeDraftByLessonTypes(
+  lessonTypes: LessonType[],
+  apiConfig: LessonFeeConfigApiItem[]
+): Record<string, LessonFeeConfigDraft> {
+  const apiConfigMap = new Map(apiConfig.map((item) => [item.lessonTypeId, item]));
+  const mergedDraft: Record<string, LessonFeeConfigDraft> = {};
+  lessonTypes.forEach((lessonType) => {
+    const saved = apiConfigMap.get(lessonType.id);
+    const defaults = getDefaultLessonFeeDraft(lessonType);
+    mergedDraft[lessonType.id] = saved
+      ? {
+          mode: isNoviceLessonTypeName(lessonType.name) ? "NOVICE" : saved.mode,
+          sessionRate: saved.sessionRate,
+          noviceSingleRate: saved.noviceSingleRate,
+          noviceMultiRatePerPerson: saved.noviceMultiRatePerPerson,
+          fullTimeFreeHeadcount: saved.fullTimeFreeHeadcount,
+        }
+      : defaults;
+  });
+  return mergedDraft;
+}
 
 function getMonthDateRange(month: string): { startDate: string; endDate: string } {
   const [yearStr, monthStr] = month.split("-");
@@ -45,13 +79,14 @@ export default function PayrollPage() {
     error,
     changeMonth,
     updateRow,
-    updatePartTimeHourlyRate,
     savePayroll,
+    saveSalaryConfig,
   } = usePayroll();
-  const partTimeHourlyRate = useMemo(() => {
-    const firstPartTime = rows.find((row) => row.employmentType === "PART_TIME");
-    return firstPartTime?.hourlyRate ?? 20;
-  }, [rows]);
+  const { lessonTypes, loading: lessonTypesLoading, refreshLessonTypes } = useLessonTypes();
+  const partTimeRows = useMemo(
+    () => rows.filter((row) => row.employmentType === "PART_TIME"),
+    [rows]
+  );
   const [selectedYearStr, selectedMonthStr] = month.split("-");
   const selectedYear = Number(selectedYearStr);
   const selectedMonth = Number(selectedMonthStr);
@@ -59,14 +94,18 @@ export default function PayrollPage() {
     const currentYear = new Date().getFullYear();
     return Array.from({ length: 7 }, (_, idx) => currentYear - 3 + idx);
   }, []);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<"sales" | "lessonFee" | null>(null);
   const [drawerTitle, setDrawerTitle] = useState("");
   const [salesDetails, setSalesDetails] = useState<SalesDetailItem[]>([]);
   const [drawerCommissionRate, setDrawerCommissionRate] = useState(0);
-  const [salesDetailsLoading, setSalesDetailsLoading] = useState(false);
-  const [salesDetailsError, setSalesDetailsError] = useState<string | null>(null);
+  const [lessonFeeDetails, setLessonFeeDetails] = useState<LessonFeeDetailsResult | null>(null);
+  const [drawerLoading, setDrawerLoading] = useState(false);
+  const [drawerError, setDrawerError] = useState<string | null>(null);
   const [salaryConfigOpen, setSalaryConfigOpen] = useState(false);
+  const [salaryConfigTab, setSalaryConfigTab] = useState<"fulltime" | "parttime" | "lessonFee">("fulltime");
   const [salaryDraft, setSalaryDraft] = useState<Record<string, number>>({});
+  const [partTimeHourlyRateDraft, setPartTimeHourlyRateDraft] = useState(20);
+  const [lessonFeeConfigDraft, setLessonFeeConfigDraft] = useState<Record<string, LessonFeeConfigDraft>>({});
 
   const totals = useMemo(() => {
     const totalLaborCost = rows.reduce((sum, row) => sum + row.totalSalary, 0);
@@ -83,10 +122,11 @@ export default function PayrollPage() {
   ) => {
     setDrawerTitle(`${coachName} · ${month} 销售明细`);
     setDrawerCommissionRate(salesAmount > 0 ? salesCommission / salesAmount : 0);
-    setDrawerOpen(true);
+    setDrawerMode("sales");
     setSalesDetails([]);
-    setSalesDetailsError(null);
-    setSalesDetailsLoading(true);
+    setLessonFeeDetails(null);
+    setDrawerError(null);
+    setDrawerLoading(true);
     try {
       const { startDate, endDate } = getMonthDateRange(month);
       const params = new URLSearchParams({
@@ -99,10 +139,35 @@ export default function PayrollPage() {
       const data = await response.json();
       setSalesDetails(Array.isArray(data) ? data : []);
     } catch (err) {
-      setSalesDetailsError(err instanceof Error ? err.message : "加载销售明细失败");
+      setDrawerError(err instanceof Error ? err.message : "加载销售明细失败");
     } finally {
-      setSalesDetailsLoading(false);
+      setDrawerLoading(false);
     }
+  };
+
+  const openLessonFeeDetails = async (coachId: string, coachName: string) => {
+    setDrawerTitle(`${coachName} · ${month} 课时费明细`);
+    setDrawerMode("lessonFee");
+    setSalesDetails([]);
+    setLessonFeeDetails(null);
+    setDrawerError(null);
+    setDrawerLoading(true);
+    try {
+      const params = new URLSearchParams({ coachId, month });
+      const response = await fetch(`/api/payroll/lesson-fee-details?${params.toString()}`);
+      if (!response.ok) throw new Error("加载课时费明细失败");
+      const data = (await response.json()) as LessonFeeDetailsResult;
+      setLessonFeeDetails(data);
+    } catch (err) {
+      setDrawerError(err instanceof Error ? err.message : "加载课时费明细失败");
+    } finally {
+      setDrawerLoading(false);
+    }
+  };
+
+  const closeDrawer = () => {
+    setDrawerMode(null);
+    setDrawerError(null);
   };
 
   const fullTimeRows = useMemo(
@@ -110,24 +175,70 @@ export default function PayrollPage() {
     [rows]
   );
 
-  const openSalaryConfig = () => {
-    const initialDraft: Record<string, number> = {};
+  const reloadLessonFeeConfigData = useCallback(async () => {
+    const latestLessonTypes = await refreshLessonTypes();
+    try {
+      const response = await fetch("/api/payroll/lesson-fee-config");
+      const apiConfig = response.ok ? ((await response.json()) as LessonFeeConfigApiItem[]) : [];
+      setLessonFeeConfigDraft(buildLessonFeeDraftByLessonTypes(latestLessonTypes, apiConfig));
+    } catch {
+      setLessonFeeConfigDraft(buildLessonFeeDraftByLessonTypes(latestLessonTypes, []));
+    }
+  }, [refreshLessonTypes]);
+
+  const openSalaryConfig = async () => {
+    const initialSalaryDraft: Record<string, number> = {};
     fullTimeRows.forEach((row) => {
-      initialDraft[row.coachId] = row.basicSalary;
+      initialSalaryDraft[row.coachId] = row.basicSalary;
     });
-    setSalaryDraft(initialDraft);
+    const firstPartTime = partTimeRows[0];
+    setSalaryDraft(initialSalaryDraft);
+    setPartTimeHourlyRateDraft(firstPartTime?.hourlyRate ?? 20);
+    await reloadLessonFeeConfigData();
+    setSalaryConfigTab("fulltime");
     setSalaryConfigOpen(true);
   };
 
+  useEffect(() => {
+    if (!salaryConfigOpen) return;
+    const handleFocusRefresh = () => {
+      void reloadLessonFeeConfigData();
+    };
+    window.addEventListener("focus", handleFocusRefresh);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        handleFocusRefresh();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", handleFocusRefresh);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [salaryConfigOpen, reloadLessonFeeConfigData]);
+
   const applySalaryConfig = async () => {
-    fullTimeRows.forEach((row) => {
-      updateRow(row.coachId, {
-        basicSalary: Number(salaryDraft[row.coachId] ?? row.basicSalary),
-      });
-    });
     setSalaryConfigOpen(false);
     try {
-      await savePayroll();
+      const latestLessonTypes = await refreshLessonTypes();
+      const configResponse = await fetch("/api/payroll/lesson-fee-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          config: latestLessonTypes.map((lessonType) => {
+            const draft = lessonFeeConfigDraft[lessonType.id] ?? getDefaultLessonFeeDraft(lessonType);
+            return {
+              lessonTypeId: lessonType.id,
+              ...draft,
+              mode: isNoviceLessonTypeName(lessonType.name) ? "NOVICE" : "PER_PERSON",
+            };
+          }),
+        }),
+      });
+      if (!configResponse.ok) {
+        throw new Error("课时费配置保存失败");
+      }
+      await saveSalaryConfig(salaryDraft, partTimeHourlyRateDraft);
       alert("工资配置已保存");
     } catch {
       alert("工资配置保存失败");
@@ -222,19 +333,7 @@ export default function PayrollPage() {
           <div className="px-6 py-4 border-b border-slate-200">
             <h2 className="text-lg font-semibold text-slate-800">工资计算（按月）</h2>
             <p className="text-sm text-slate-500 mt-1">
-              销售提成自动计算；全职基本工资在“工资配置”中维护；兼职基本工资按当月工时自动计算（时薪：
-              <input
-                type="number"
-                value={partTimeHourlyRate}
-                min={0}
-                step="0.1"
-                onChange={(e) => updatePartTimeHourlyRate(Number(e.target.value || 0))}
-                onBlur={() => {
-                  savePayroll().catch(() => {});
-                }}
-                className="mx-1 w-20 px-1.5 py-0.5 border border-slate-300 rounded text-right text-xs bg-white align-middle"
-              />
-              元/小时）；课时费可手动编辑。
+              销售提成与课时费根据当月记录自动计算；全职基本工资与兼职时薪在「工资配置」中维护；兼职基本工资按当月工时自动计算。
             </p>
           </div>
 
@@ -314,19 +413,17 @@ export default function PayrollPage() {
                           </button>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <input
-                          type="number"
-                          value={row.lessonFee}
-                          min={0}
-                          step="0.01"
-                          onChange={(e) =>
-                            updateRow(row.coachId, {
-                              lessonFee: Number(e.target.value || 0),
-                            })
-                          }
-                          className="w-36 px-2 py-1 border border-slate-300 rounded-md text-right text-sm"
-                        />
+                      <td className="px-4 py-3 text-right text-sm text-slate-700">
+                        <div className="inline-flex items-center gap-1">
+                          <span>{formatCurrency(row.lessonFee)}</span>
+                          <button
+                            onClick={() => openLessonFeeDetails(row.coachId, row.coachName)}
+                            className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700"
+                            title="查看课时费明细"
+                          >
+                            <List className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-right text-sm font-semibold text-slate-900">
                         {formatCurrency(row.totalSalary)}
@@ -356,57 +453,116 @@ export default function PayrollPage() {
         )}
       </main>
 
-      {drawerOpen && (
+      {drawerMode && (
         <div className="fixed inset-0 z-[60]">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setDrawerOpen(false)} />
+          <div className="absolute inset-0 bg-black/30" onClick={closeDrawer} />
           <aside className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl border-l border-slate-200 flex flex-col">
             <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-800">{drawerTitle}</h3>
               <button
-                onClick={() => setDrawerOpen(false)}
+                onClick={closeDrawer}
                 className="p-1 rounded hover:bg-slate-100 text-slate-500"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4">
-              {salesDetailsLoading ? (
+              {drawerLoading ? (
                 <div className="text-sm text-slate-500">加载中...</div>
-              ) : salesDetailsError ? (
-                <div className="text-sm text-red-600">{salesDetailsError}</div>
-              ) : salesDetails.length === 0 ? (
-                <div className="text-sm text-slate-400">暂无销售记录</div>
-              ) : (
-                <div className="overflow-x-auto border border-slate-200 rounded-md">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">时间</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">类别</th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">产品</th>
-                        <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">金额</th>
-                        <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">提成</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {salesDetails.map((item) => (
-                        <tr key={item.id}>
-                          <td className="px-3 py-2 text-slate-600">
-                            {new Date(item.soldAt).toLocaleString("zh-CN")}
+              ) : drawerError ? (
+                <div className="text-sm text-red-600">{drawerError}</div>
+              ) : drawerMode === "sales" ? (
+                salesDetails.length === 0 ? (
+                  <div className="text-sm text-slate-400">暂无销售记录</div>
+                ) : (
+                  <div className="overflow-x-auto border border-slate-200 rounded-md">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">时间</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">类别</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">产品</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">金额</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">提成</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {salesDetails.map((item) => (
+                          <tr key={item.id}>
+                            <td className="px-3 py-2 text-slate-600">
+                              {new Date(item.soldAt).toLocaleString("zh-CN")}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600">{item.salesCategory?.name || "其他"}</td>
+                            <td className="px-3 py-2 text-slate-800">{item.productName}</td>
+                            <td className="px-3 py-2 text-right text-slate-700">
+                              {formatCurrency(item.amount)}
+                            </td>
+                            <td className="px-3 py-2 text-right text-emerald-700 font-medium">
+                              {formatCurrency(Number((item.amount * drawerCommissionRate).toFixed(2)))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              ) : lessonFeeDetails && lessonFeeDetails.items.length > 0 ? (
+                <div className="space-y-4">
+                  {lessonFeeDetails.noviceFreeSummary && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                      <div className="font-medium">全职新手课免计</div>
+                      <div className="mt-1 text-amber-800">
+                        本月已免计 {lessonFeeDetails.noviceFreeSummary.used} /{" "}
+                        {lessonFeeDetails.noviceFreeSummary.quota} 人
+                      </div>
+                    </div>
+                  )}
+                  <div className="overflow-x-auto border border-slate-200 rounded-md">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">日期</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">课程类型</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">人数</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">免计</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">计算方式</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">课时费</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {lessonFeeDetails.items.map((item) => (
+                          <tr
+                            key={item.id}
+                            className={item.freeStudentCount > 0 ? "bg-amber-50/60" : undefined}
+                          >
+                            <td className="px-3 py-2 text-slate-600">{item.dateStr}</td>
+                            <td className="px-3 py-2 text-slate-800">{item.lessonTypeName}</td>
+                            <td className="px-3 py-2 text-right text-slate-700">{item.studentCount}</td>
+                            <td className="px-3 py-2 text-right text-amber-700">
+                              {item.freeStudentCount > 0 ? `${item.freeStudentCount} 人` : "-"}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600">{item.calculationNote}</td>
+                            <td className="px-3 py-2 text-right text-emerald-700 font-medium">
+                              {formatCurrency(item.fee)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-slate-50 border-t border-slate-200">
+                        <tr>
+                          <td colSpan={5} className="px-3 py-2 text-right text-xs font-semibold text-slate-600">
+                            合计
                           </td>
-                          <td className="px-3 py-2 text-slate-600">{item.salesCategory?.name || "其他"}</td>
-                          <td className="px-3 py-2 text-slate-800">{item.productName}</td>
-                          <td className="px-3 py-2 text-right text-slate-700">
-                            {formatCurrency(item.amount)}
-                          </td>
-                          <td className="px-3 py-2 text-right text-emerald-700 font-medium">
-                            {formatCurrency(Number((item.amount * drawerCommissionRate).toFixed(2)))}
+                          <td className="px-3 py-2 text-right text-sm font-bold text-emerald-700">
+                            {formatCurrency(lessonFeeDetails.totalFee)}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
+              ) : (
+                <div className="text-sm text-slate-400">暂无课程记录</div>
               )}
             </div>
           </aside>
@@ -417,7 +573,7 @@ export default function PayrollPage() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-xl rounded-xl bg-white shadow-2xl border border-slate-200">
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-              <h3 className="text-base font-semibold text-slate-800">全职基本工资配置</h3>
+              <h3 className="text-base font-semibold text-slate-800">工资配置</h3>
               <button
                 onClick={() => setSalaryConfigOpen(false)}
                 className="p-1 rounded hover:bg-slate-100 text-slate-500"
@@ -425,28 +581,193 @@ export default function PayrollPage() {
                 <X className="w-4 h-4" />
               </button>
             </div>
+            <div className="px-5 pt-3 border-b border-slate-200 flex gap-1">
+              <button
+                type="button"
+                onClick={() => setSalaryConfigTab("fulltime")}
+                className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${
+                  salaryConfigTab === "fulltime"
+                    ? "border-emerald-600 text-emerald-700 bg-emerald-50"
+                    : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                全职基本工资
+              </button>
+              <button
+                type="button"
+                onClick={() => setSalaryConfigTab("parttime")}
+                className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${
+                  salaryConfigTab === "parttime"
+                    ? "border-emerald-600 text-emerald-700 bg-emerald-50"
+                    : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                兼职时薪
+              </button>
+              <button
+                type="button"
+                onClick={() => setSalaryConfigTab("lessonFee")}
+                className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${
+                  salaryConfigTab === "lessonFee"
+                    ? "border-emerald-600 text-emerald-700 bg-emerald-50"
+                    : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                课时费配置
+              </button>
+            </div>
             <div className="px-5 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
-              {fullTimeRows.length === 0 ? (
-                <div className="text-sm text-slate-500">暂无全职教练</div>
-              ) : (
-                fullTimeRows.map((row) => (
-                  <div key={row.coachId} className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-medium text-slate-700">{row.coachName}</div>
+              {salaryConfigTab === "fulltime" ? (
+                fullTimeRows.length === 0 ? (
+                  <div className="text-sm text-slate-500">暂无全职教练</div>
+                ) : (
+                  fullTimeRows.map((row) => (
+                    <div key={row.coachId} className="flex items-center justify-between gap-3">
+                      <div className="text-sm font-medium text-slate-700">{row.coachName}</div>
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={salaryDraft[row.coachId] ?? 0}
+                        onChange={(e) =>
+                          setSalaryDraft((prev) => ({
+                            ...prev,
+                            [row.coachId]: Number(e.target.value || 0),
+                          }))
+                        }
+                        className="w-44 px-3 py-2 border border-slate-300 rounded-md text-right text-sm"
+                      />
+                    </div>
+                  ))
+                )
+              ) : salaryConfigTab === "parttime" ? (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-medium text-slate-700">兼职统一时薪</div>
+                  <div className="flex items-center gap-2">
                     <input
                       type="number"
                       min={0}
-                      step="0.01"
-                      value={salaryDraft[row.coachId] ?? 0}
-                      onChange={(e) =>
-                        setSalaryDraft((prev) => ({
-                          ...prev,
-                          [row.coachId]: Number(e.target.value || 0),
-                        }))
-                      }
-                      className="w-44 px-3 py-2 border border-slate-300 rounded-md text-right text-sm"
+                      step="0.1"
+                      value={partTimeHourlyRateDraft}
+                      onChange={(e) => setPartTimeHourlyRateDraft(Number(e.target.value || 0))}
+                      className="w-32 px-3 py-2 border border-slate-300 rounded-md text-right text-sm"
                     />
+                    <span className="text-sm text-slate-500">元/小时</span>
                   </div>
-                ))
+                </div>
+              ) : lessonTypesLoading ? (
+                <div className="text-sm text-slate-500">课程类型加载中...</div>
+              ) : lessonTypes.length === 0 ? (
+                <div className="text-sm text-slate-500">暂无课程类型，请先在课程管理中维护</div>
+              ) : (
+                <div className="space-y-3">
+                  {lessonTypes.map((lessonType) => {
+                    const config =
+                      lessonFeeConfigDraft[lessonType.id] ?? getDefaultLessonFeeDraft(lessonType);
+                    return (
+                      <div key={lessonType.id} className="rounded-lg border border-slate-200 p-3 space-y-2">
+                        <div className="text-sm font-semibold text-slate-800">{lessonType.name}</div>
+                        {config.mode === "NOVICE" ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="text-sm text-slate-600">单人课</div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  value={config.noviceSingleRate}
+                                  onChange={(e) =>
+                                    setLessonFeeConfigDraft((prev) => ({
+                                      ...prev,
+                                      [lessonType.id]: {
+                                        ...config,
+                                        noviceSingleRate: Number(e.target.value || 0),
+                                      },
+                                    }))
+                                  }
+                                  className="w-28 px-3 py-1.5 border border-slate-300 rounded-md text-right text-sm"
+                                />
+                                <span className="text-sm text-slate-500">元/节</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="text-sm text-slate-600">多人课</div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="0.01"
+                                  value={config.noviceMultiRatePerPerson}
+                                  onChange={(e) =>
+                                    setLessonFeeConfigDraft((prev) => ({
+                                      ...prev,
+                                      [lessonType.id]: {
+                                        ...config,
+                                        noviceMultiRatePerPerson: Number(e.target.value || 0),
+                                      },
+                                    }))
+                                  }
+                                  className="w-28 px-3 py-1.5 border border-slate-300 rounded-md text-right text-sm"
+                                />
+                                <span className="text-sm text-slate-500">元/人</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="text-sm text-slate-600">全职免计人数</div>
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step="1"
+                                  value={config.fullTimeFreeHeadcount}
+                                  onChange={(e) =>
+                                    setLessonFeeConfigDraft((prev) => ({
+                                      ...prev,
+                                      [lessonType.id]: {
+                                        ...config,
+                                        fullTimeFreeHeadcount: Number(e.target.value || 0),
+                                      },
+                                    }))
+                                  }
+                                  className="w-28 px-3 py-1.5 border border-slate-300 rounded-md text-right text-sm"
+                                />
+                                <span className="text-sm text-slate-500">人</span>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-sm text-slate-600">
+                              {config.mode === "PER_PERSON" ? "每人课时费" : "标准课时费"}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                value={config.sessionRate}
+                                onChange={(e) =>
+                                  setLessonFeeConfigDraft((prev) => ({
+                                    ...prev,
+                                    [lessonType.id]: {
+                                      ...config,
+                                      sessionRate: Number(e.target.value || 0),
+                                    },
+                                  }))
+                                }
+                                className="w-28 px-3 py-1.5 border border-slate-300 rounded-md text-right text-sm"
+                              />
+                              <span className="text-sm text-slate-500">
+                                元/{config.mode === "PER_PERSON" ? "人" : "节"}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
             <div className="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
