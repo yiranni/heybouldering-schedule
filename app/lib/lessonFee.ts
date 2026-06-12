@@ -20,7 +20,7 @@ export type LessonRecordForFee = {
 };
 
 export const LESSON_FEE_CONFIG_KEY = "lesson_fee_config_v1";
-export const NOVICE_LESSON_TYPE_NAME = "新手课";
+export const NOVICE_LESSON_TYPE_NAME = "单人新手课";
 
 export function isNoviceLessonTypeName(name: string): boolean {
   return name.trim() === NOVICE_LESSON_TYPE_NAME;
