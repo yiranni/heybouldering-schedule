@@ -27,7 +27,44 @@ function randomDateInLastMonths(months: number): string {
   return toDateStr(new Date(randomMs));
 }
 
+function randomDateInMonth(month: string): string {
+  const [yearStr, monthStr] = month.split("-");
+  const year = Number(yearStr);
+  const monthIndex = Number(monthStr) - 1;
+  const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+  const day = randomInt(1, lastDay);
+  return `${yearStr}-${monthStr}-${String(day).padStart(2, "0")}`;
+}
+
+function parseArgs() {
+  const monthArg = process.argv.find((arg) => arg.startsWith("--month="));
+  const month = monthArg?.slice("--month=".length);
+  const append = process.argv.includes("--append") || Boolean(month);
+  const countArg = process.argv.find((arg) => arg.startsWith("--count="));
+  const count = countArg ? Number(countArg.slice("--count=".length)) : RECORD_COUNT;
+
+  if (month && !/^\d{4}-\d{2}$/.test(month)) {
+    throw new Error("month 格式应为 YYYY-MM，例如 2026-06");
+  }
+  if (!Number.isFinite(count) || count < 1) {
+    throw new Error("count 必须为正整数");
+  }
+
+  return { month, append, count };
+}
+
+function buildStudentCount(lessonTypeName: string): number {
+  const isSingleNovice = lessonTypeName === "单人新手课";
+  const isMultiNovice = lessonTypeName === "多人新手课";
+  const isLegacyNovice = lessonTypeName === "新手课";
+  if (isSingleNovice) return 1;
+  if (isMultiNovice) return randomInt(2, 8);
+  if (isLegacyNovice) return randomInt(1, 6);
+  return randomInt(1, 12);
+}
+
 async function main() {
+  const { month, append, count } = parseArgs();
   const [coaches, lessonTypes] = await Promise.all([
     prisma.coach.findMany({
       where: { archived: false },
@@ -46,23 +83,27 @@ async function main() {
     throw new Error("没有可用课程类型，请先在课程管理中维护");
   }
 
-  const records = Array.from({ length: RECORD_COUNT }, () => {
-    const lessonType = randomItem(lessonTypes);
-    const isNovice = lessonType.name === "新手课";
-    const studentCount = isNovice ? randomInt(1, 6) : randomInt(1, 12);
+  if (!append) {
+    const deleted = await prisma.lessonRecord.deleteMany();
+    console.log(`已清除 ${deleted.count} 条课程记录`);
+  }
 
+  const records = Array.from({ length: count }, () => {
+    const lessonType = randomItem(lessonTypes);
     return {
-      dateStr: randomDateInLastMonths(3),
+      dateStr: month ? randomDateInMonth(month) : randomDateInLastMonths(3),
       lessonTypeId: lessonType.id,
       coachId: randomItem(coaches).id,
-      studentCount,
+      studentCount: buildStudentCount(lessonType.name),
       note: Math.random() < 0.2 ? "测试数据" : null,
     };
   });
 
   const result = await prisma.lessonRecord.createMany({ data: records });
 
-  console.log(`已随机生成 ${result.count} 条课程记录`);
+  console.log(
+    `已${append ? "追加" : "生成"} ${result.count} 条课程记录${month ? `（${month}）` : ""}`
+  );
   console.log(`教练数: ${coaches.length}，课程类型数: ${lessonTypes.length}`);
 }
 

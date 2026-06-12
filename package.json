@@ -7,17 +7,17 @@
   },
   "scripts": {
     "dev": "next dev -p 3001",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start -p 3001",
     "lint": "next lint",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "user:create-admin": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/createAdmin.ts",
-    "db:seed-lessons": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"CommonJS\"}' ts-node prisma/seedLessonRecords.ts"
+    "user:create-admin": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/createAdmin.ts"
   },
   "dependencies": {
+    "@prisma/client": "^5.22.0",
     "docx": "^9.5.1",
     "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
@@ -28,7 +28,6 @@
     "recharts": "^3.8.1"
   },
   "devDependencies": {
-    "@prisma/client": "^5.22.0",
     "@types/file-saver": "^2.0.7",
     "@types/node": "^20.17.9",
     "@types/react": "^18.3.18",

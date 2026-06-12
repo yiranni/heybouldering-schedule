@@ -1,5 +1,3 @@
-import { prisma } from "@/app/lib/prisma";
-
 export type LessonFeeMode = "PER_SESSION" | "PER_PERSON" | "NOVICE";
 
 export type LessonFeeConfigItem = {
@@ -17,13 +15,29 @@ export type LessonRecordForFee = {
   dateStr: string;
   lessonTypeId: string;
   studentCount: number;
+  lessonTypeName?: string;
 };
 
 export const LESSON_FEE_CONFIG_KEY = "lesson_fee_config_v1";
-export const NOVICE_LESSON_TYPE_NAME = "单人新手课";
 
+/** 参与全职免计合并统计的新手课类型 */
+export const NOVICE_LESSON_TYPE_NAMES = ["单人新手课", "多人新手课", "新手课"] as const;
+
+export const SINGLE_NOVICE_LESSON_TYPE_NAME = "单人新手课";
+export const MULTI_NOVICE_LESSON_TYPE_NAME = "多人新手课";
+
+export function isNoviceLessonTypeForFreeQuota(name: string): boolean {
+  const trimmed = name.trim();
+  return NOVICE_LESSON_TYPE_NAMES.includes(trimmed as (typeof NOVICE_LESSON_TYPE_NAMES)[number]);
+}
+
+/** @deprecated use isNoviceLessonTypeForFreeQuota */
 export function isNoviceLessonTypeName(name: string): boolean {
-  return name.trim() === NOVICE_LESSON_TYPE_NAME;
+  return isNoviceLessonTypeForFreeQuota(name);
+}
+
+export function isSingleNoviceLessonType(name: string): boolean {
+  return name.trim() === SINGLE_NOVICE_LESSON_TYPE_NAME;
 }
 
 export function normalizeLessonFeeConfig(input: unknown): LessonFeeConfigItem[] {
@@ -53,15 +67,64 @@ export function normalizeLessonFeeConfig(input: unknown): LessonFeeConfigItem[] 
     );
 }
 
+function resolveEffectiveMode(
+  config: Pick<LessonFeeConfigItem, "mode" | "sessionRate" | "noviceSingleRate" | "noviceMultiRatePerPerson">,
+  lessonTypeName: string
+): Exclude<LessonFeeMode, "NOVICE"> {
+  if (config.mode !== "NOVICE") {
+    return config.mode === "PER_PERSON" ? "PER_PERSON" : "PER_SESSION";
+  }
+  return isSingleNoviceLessonType(lessonTypeName) ? "PER_SESSION" : "PER_PERSON";
+}
+
+function resolveEffectiveSessionRate(
+  config: Pick<
+    LessonFeeConfigItem,
+    "mode" | "sessionRate" | "noviceSingleRate" | "noviceMultiRatePerPerson"
+  >,
+  lessonTypeName: string
+): number {
+  if (config.mode !== "NOVICE") return config.sessionRate;
+  return isSingleNoviceLessonType(lessonTypeName)
+    ? config.noviceSingleRate
+    : config.noviceMultiRatePerPerson;
+}
+
+export function normalizeConfigItem(
+  config: LessonFeeConfigItem,
+  lessonTypeName: string
+): LessonFeeConfigItem {
+  const mode = resolveEffectiveMode(config, lessonTypeName);
+  const sessionRate = resolveEffectiveSessionRate(config, lessonTypeName);
+  return {
+    ...config,
+    mode,
+    sessionRate,
+    fullTimeFreeHeadcount: isNoviceLessonTypeForFreeQuota(lessonTypeName)
+      ? config.fullTimeFreeHeadcount
+      : 0,
+  };
+}
+
 export function getDefaultLessonFeeDraft(
   lessonType: Pick<{ name: string }, "name">
 ): LessonFeeConfigDraft {
-  if (isNoviceLessonTypeName(lessonType.name)) {
+  const name = lessonType.name.trim();
+  if (isSingleNoviceLessonType(name)) {
     return {
-      mode: "NOVICE",
-      sessionRate: 0,
-      noviceSingleRate: 50,
-      noviceMultiRatePerPerson: 35,
+      mode: "PER_SESSION",
+      sessionRate: 50,
+      noviceSingleRate: 0,
+      noviceMultiRatePerPerson: 0,
+      fullTimeFreeHeadcount: 20,
+    };
+  }
+  if (isNoviceLessonTypeForFreeQuota(name)) {
+    return {
+      mode: "PER_PERSON",
+      sessionRate: 35,
+      noviceSingleRate: 0,
+      noviceMultiRatePerPerson: 0,
       fullTimeFreeHeadcount: 20,
     };
   }
@@ -83,10 +146,7 @@ export function resolveLessonFeeConfigMap(
   lessonTypes.forEach((lessonType) => {
     const saved = savedMap.get(lessonType.id);
     if (saved) {
-      result.set(lessonType.id, {
-        ...saved,
-        mode: isNoviceLessonTypeName(lessonType.name) ? "NOVICE" : "PER_PERSON",
-      });
+      result.set(lessonType.id, normalizeConfigItem(saved, lessonType.name));
       return;
     }
     const defaults = getDefaultLessonFeeDraft(lessonType);
@@ -128,49 +188,54 @@ function roundFee(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+function resolveLessonTypeName(
+  record: LessonRecordForFee,
+  lessonTypeNameById: Map<string, string>
+): string {
+  return record.lessonTypeName || lessonTypeNameById.get(record.lessonTypeId) || "";
+}
+
 export function calcRecordLessonFeeDetail(
   record: LessonRecordForFee,
   config: LessonFeeConfigItem,
   employmentType: "FULL_TIME" | "PART_TIME",
-  noviceFreeUsed: { count: number }
+  noviceFreeUsed: { count: number },
+  lessonTypeNameById: Map<string, string> = new Map()
 ): RecordLessonFeeBreakdown {
+  const lessonTypeName = resolveLessonTypeName(record, lessonTypeNameById);
+  const effective = normalizeConfigItem(config, lessonTypeName);
   const studentCount = Math.max(1, record.studentCount || 1);
   let freeStudentCount = 0;
   let billableCount = studentCount;
 
-  if (config.mode === "NOVICE") {
-    if (employmentType === "FULL_TIME" && config.fullTimeFreeHeadcount > 0) {
-      const remainingFree = Math.max(0, config.fullTimeFreeHeadcount - noviceFreeUsed.count);
-      freeStudentCount = Math.min(studentCount, remainingFree);
-      noviceFreeUsed.count += freeStudentCount;
-      billableCount = studentCount - freeStudentCount;
-    }
-    if (billableCount <= 0) {
-      return {
-        fee: 0,
-        freeStudentCount,
-        billableStudentCount: 0,
-        calculationNote:
-          freeStudentCount > 0 ? `全职免计 ${freeStudentCount} 人` : "不计课时费",
-      };
-    }
-    if (studentCount === 1) {
-      const note =
-        freeStudentCount > 0
-          ? `单人课（全职免计 ${freeStudentCount} 人）`
-          : `单人课 ¥${config.noviceSingleRate}`;
-      return {
-        fee: config.noviceSingleRate,
-        freeStudentCount,
-        billableStudentCount: billableCount,
-        calculationNote: note,
-      };
-    }
-    const fee = roundFee(billableCount * config.noviceMultiRatePerPerson);
+  const appliesNoviceFree =
+    employmentType === "FULL_TIME" &&
+    isNoviceLessonTypeForFreeQuota(lessonTypeName) &&
+    effective.fullTimeFreeHeadcount > 0;
+
+  if (appliesNoviceFree) {
+    const remainingFree = Math.max(0, effective.fullTimeFreeHeadcount - noviceFreeUsed.count);
+    freeStudentCount = Math.min(studentCount, remainingFree);
+    noviceFreeUsed.count += freeStudentCount;
+    billableCount = studentCount - freeStudentCount;
+  }
+
+  if (billableCount <= 0) {
+    return {
+      fee: 0,
+      freeStudentCount,
+      billableStudentCount: 0,
+      calculationNote:
+        freeStudentCount > 0 ? `全职免计 ${freeStudentCount} 人` : "不计课时费",
+    };
+  }
+
+  if (effective.mode === "PER_PERSON") {
+    const fee = roundFee(billableCount * effective.sessionRate);
     const note =
       freeStudentCount > 0
-        ? `${billableCount} 人 × ¥${config.noviceMultiRatePerPerson}（免计 ${freeStudentCount} 人）`
-        : `${billableCount} 人 × ¥${config.noviceMultiRatePerPerson}`;
+        ? `${billableCount} 人 × ¥${effective.sessionRate}（免计 ${freeStudentCount} 人）`
+        : `${billableCount} 人 × ¥${effective.sessionRate}`;
     return {
       fee,
       freeStudentCount,
@@ -179,20 +244,16 @@ export function calcRecordLessonFeeDetail(
     };
   }
 
-  if (config.mode === "PER_PERSON") {
-    return {
-      fee: roundFee(studentCount * config.sessionRate),
-      freeStudentCount: 0,
-      billableStudentCount: studentCount,
-      calculationNote: `${studentCount} 人 × ¥${config.sessionRate}`,
-    };
-  }
-
+  const fee = effective.sessionRate;
+  const note =
+    freeStudentCount > 0
+      ? `每节 ¥${effective.sessionRate}（免计 ${freeStudentCount} 人）`
+      : `每节 ¥${effective.sessionRate}`;
   return {
-    fee: config.sessionRate,
-    freeStudentCount: 0,
-    billableStudentCount: 1,
-    calculationNote: `每节 ¥${config.sessionRate}`,
+    fee,
+    freeStudentCount,
+    billableStudentCount: billableCount,
+    calculationNote: note,
   };
 }
 
@@ -200,17 +261,30 @@ export function calcRecordLessonFee(
   record: LessonRecordForFee,
   config: LessonFeeConfigItem,
   employmentType: "FULL_TIME" | "PART_TIME",
-  noviceFreeUsed: { count: number }
+  noviceFreeUsed: { count: number },
+  lessonTypeNameById: Map<string, string> = new Map()
 ): number {
-  return calcRecordLessonFeeDetail(record, config, employmentType, noviceFreeUsed).fee;
+  return calcRecordLessonFeeDetail(
+    record,
+    config,
+    employmentType,
+    noviceFreeUsed,
+    lessonTypeNameById
+  ).fee;
 }
 
 export function calcCoachLessonFee(
   records: LessonRecordForFee[],
   configByLessonTypeId: Map<string, LessonFeeConfigItem>,
-  employmentType: "FULL_TIME" | "PART_TIME"
+  employmentType: "FULL_TIME" | "PART_TIME",
+  lessonTypeNameById: Map<string, string> = new Map()
 ): number {
-  return calcCoachLessonFeeDetails(records, configByLessonTypeId, employmentType, new Map()).totalFee;
+  return calcCoachLessonFeeDetails(
+    records,
+    configByLessonTypeId,
+    employmentType,
+    lessonTypeNameById
+  ).totalFee;
 }
 
 type LessonRecordWithMeta = LessonRecordForFee & {
@@ -227,23 +301,35 @@ export function calcCoachLessonFeeDetails(
   const sorted = [...records].sort((a, b) => a.dateStr.localeCompare(b.dateStr));
   const noviceFreeUsed = { count: 0 };
   let noviceFreeQuota = 0;
+  if (employmentType === "FULL_TIME") {
+    for (const [lessonTypeId, config] of configByLessonTypeId) {
+      const lessonTypeName = lessonTypeNameById.get(lessonTypeId) || "";
+      if (!isNoviceLessonTypeForFreeQuota(lessonTypeName)) continue;
+      const effective = normalizeConfigItem(config, lessonTypeName);
+      noviceFreeQuota = Math.max(noviceFreeQuota, effective.fullTimeFreeHeadcount);
+    }
+  }
   const items: LessonFeeRecordDetail[] = [];
 
   for (const record of sorted) {
     const config = configByLessonTypeId.get(record.lessonTypeId);
     if (!config) continue;
 
-    if (config.mode === "NOVICE" && employmentType === "FULL_TIME") {
-      noviceFreeQuota = Math.max(noviceFreeQuota, config.fullTimeFreeHeadcount);
-    }
+    const lessonTypeName =
+      record.lessonTypeName || lessonTypeNameById.get(record.lessonTypeId) || "";
 
-    const breakdown = calcRecordLessonFeeDetail(record, config, employmentType, noviceFreeUsed);
+    const breakdown = calcRecordLessonFeeDetail(
+      record,
+      config,
+      employmentType,
+      noviceFreeUsed,
+      lessonTypeNameById
+    );
     items.push({
       id: record.id || `${record.dateStr}-${record.lessonTypeId}-${items.length}`,
       dateStr: record.dateStr,
       lessonTypeId: record.lessonTypeId,
-      lessonTypeName:
-        record.lessonTypeName || lessonTypeNameById.get(record.lessonTypeId) || "未知课程",
+      lessonTypeName: lessonTypeName || "未知课程",
       studentCount: Math.max(1, record.studentCount || 1),
       freeStudentCount: breakdown.freeStudentCount,
       billableStudentCount: breakdown.billableStudentCount,
@@ -266,28 +352,6 @@ export function calcCoachLessonFeeDetails(
   };
 }
 
-async function ensurePayrollSettingsTable() {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS payroll_settings (
-      key TEXT PRIMARY KEY,
-      value JSONB NOT NULL,
-      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
-      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
-    )
-  `);
-}
-
-export async function fetchLessonFeeConfig(): Promise<LessonFeeConfigItem[]> {
-  await ensurePayrollSettingsTable();
-  const rows = await prisma.$queryRaw<Array<{ value: unknown }>>`
-    SELECT value
-    FROM payroll_settings
-    WHERE key = ${LESSON_FEE_CONFIG_KEY}
-    LIMIT 1
-  `;
-  return normalizeLessonFeeConfig(rows[0]?.value);
-}
-
 type CoachForLessonFee = {
   id: string;
   employmentType: string;
@@ -306,6 +370,7 @@ export function buildLessonFeeByCoach(
   lessonRecords: LessonRecordRowForFee[],
   savedFeeConfig: LessonFeeConfigItem[]
 ): Map<string, number> {
+  const lessonTypeNameById = new Map(lessonTypes.map((item) => [item.id, item.name]));
   const feeConfigMap = resolveLessonFeeConfigMap(lessonTypes, savedFeeConfig);
   const lessonRecordsByCoach = new Map<string, LessonRecordForFee[]>();
 
@@ -315,6 +380,7 @@ export function buildLessonFeeByCoach(
       dateStr: record.dateStr,
       lessonTypeId: record.lessonTypeId,
       studentCount: record.studentCount,
+      lessonTypeName: lessonTypeNameById.get(record.lessonTypeId),
     });
     lessonRecordsByCoach.set(record.coachId, coachRecords);
   }
@@ -324,40 +390,13 @@ export function buildLessonFeeByCoach(
     const employmentType = coach.employmentType === "PART_TIME" ? "PART_TIME" : "FULL_TIME";
     result.set(
       coach.id,
-      calcCoachLessonFee(lessonRecordsByCoach.get(coach.id) || [], feeConfigMap, employmentType)
+      calcCoachLessonFee(
+        lessonRecordsByCoach.get(coach.id) || [],
+        feeConfigMap,
+        employmentType,
+        lessonTypeNameById
+      )
     );
   }
   return result;
-}
-
-export async function calcLessonFeesByCoachForMonth(month: string): Promise<Map<string, number>> {
-  const [lessonTypes, lessonRecordsInMonth, savedFeeConfig, coaches] = await Promise.all([
-    prisma.lessonType.findMany({
-      where: { archived: false },
-      select: { id: true, name: true },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.lessonRecord.findMany({
-      where: {
-        dateStr: {
-          gte: `${month}-01`,
-          lte: `${month}-31`,
-        },
-      },
-      select: {
-        coachId: true,
-        dateStr: true,
-        lessonTypeId: true,
-        studentCount: true,
-      },
-    }),
-    fetchLessonFeeConfig(),
-    prisma.$queryRaw<CoachForLessonFee[]>`
-      SELECT id, "employmentType" AS "employmentType"
-      FROM coaches
-      WHERE archived = false
-    `,
-  ]);
-
-  return buildLessonFeeByCoach(coaches, lessonTypes, lessonRecordsInMonth, savedFeeConfig);
 }

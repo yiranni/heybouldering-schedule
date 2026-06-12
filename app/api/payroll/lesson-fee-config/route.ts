@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/app/lib/prisma";
 import { forbidden, unauthorized } from "@/app/lib/auth";
 import { resolveSalesAccess } from "@/app/lib/salesAccess";
-import {
-  LESSON_FEE_CONFIG_KEY,
-  fetchLessonFeeConfig,
-  normalizeLessonFeeConfig,
-} from "@/app/lib/lessonFee";
-
-async function ensurePayrollSettingsTable() {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS payroll_settings (
-      key TEXT PRIMARY KEY,
-      value JSONB NOT NULL,
-      "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
-      "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
-    )
-  `);
-}
+import { LESSON_FEE_CONFIG_KEY, normalizeLessonFeeConfig } from "@/app/lib/lessonFee";
+import { fetchLessonFeeConfig } from "@/app/lib/lessonFee.server";
+import { upsertPayrollSettingValue } from "@/app/lib/payrollSettings";
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,15 +31,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "config 必须为数组" }, { status: 400 });
     }
 
-    await ensurePayrollSettingsTable();
-    await prisma.$executeRaw`
-      INSERT INTO payroll_settings (key, value, "createdAt", "updatedAt")
-      VALUES (${LESSON_FEE_CONFIG_KEY}, ${JSON.stringify(config)}::jsonb, NOW(), NOW())
-      ON CONFLICT (key)
-      DO UPDATE SET
-        value = EXCLUDED.value,
-        "updatedAt" = NOW()
-    `;
+    await upsertPayrollSettingValue(LESSON_FEE_CONFIG_KEY, config);
 
     return NextResponse.json({ success: true, config });
   } catch (error) {

@@ -3,11 +3,11 @@ import { prisma } from "@/app/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { forbidden, unauthorized } from "@/app/lib/auth";
+import { buildLessonFeeByCoach } from "@/app/lib/lessonFee";
 import {
-  buildLessonFeeByCoach,
   calcLessonFeesByCoachForMonth,
   fetchLessonFeeConfig,
-} from "@/app/lib/lessonFee";
+} from "@/app/lib/lessonFee.server";
 import { resolveSalesAccess } from "@/app/lib/salesAccess";
 
 type SalesTotalRow = {

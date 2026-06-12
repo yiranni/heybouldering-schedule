@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { forbidden, unauthorized } from "@/app/lib/auth";
-import {
-  calcCoachLessonFeeDetails,
-  fetchLessonFeeConfig,
-  resolveLessonFeeConfigMap,
-} from "@/app/lib/lessonFee";
+import { calcCoachLessonFeeDetails, resolveLessonFeeConfigMap } from "@/app/lib/lessonFee";
+import { fetchLessonFeeConfig } from "@/app/lib/lessonFee.server";
 import { resolveSalesAccess } from "@/app/lib/salesAccess";
 
 function isValidMonth(month: string): boolean {

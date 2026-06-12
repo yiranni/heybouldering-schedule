@@ -8,7 +8,9 @@ import { usePayroll } from "../hooks/usePayroll";
 import { useLessonTypes } from "../hooks/useLessonTypes";
 import {
   getDefaultLessonFeeDraft,
-  isNoviceLessonTypeName,
+  isNoviceLessonTypeForFreeQuota,
+  isSingleNoviceLessonType,
+  normalizeConfigItem,
   type LessonFeeConfigDraft,
   type LessonFeeDetailsResult,
 } from "../lib/lessonFee";
@@ -41,13 +43,16 @@ function buildLessonFeeDraftByLessonTypes(
     const saved = apiConfigMap.get(lessonType.id);
     const defaults = getDefaultLessonFeeDraft(lessonType);
     mergedDraft[lessonType.id] = saved
-      ? {
-          mode: isNoviceLessonTypeName(lessonType.name) ? "NOVICE" : saved.mode,
-          sessionRate: saved.sessionRate,
-          noviceSingleRate: saved.noviceSingleRate,
-          noviceMultiRatePerPerson: saved.noviceMultiRatePerPerson,
-          fullTimeFreeHeadcount: saved.fullTimeFreeHeadcount,
-        }
+      ? (() => {
+          const normalized = normalizeConfigItem({ ...saved, lessonTypeId: lessonType.id }, lessonType.name);
+          return {
+            mode: normalized.mode,
+            sessionRate: normalized.sessionRate,
+            noviceSingleRate: saved.noviceSingleRate,
+            noviceMultiRatePerPerson: saved.noviceMultiRatePerPerson,
+            fullTimeFreeHeadcount: normalized.fullTimeFreeHeadcount,
+          };
+        })()
       : defaults;
   });
   return mergedDraft;
@@ -227,11 +232,10 @@ export default function PayrollPage() {
         body: JSON.stringify({
           config: latestLessonTypes.map((lessonType) => {
             const draft = lessonFeeConfigDraft[lessonType.id] ?? getDefaultLessonFeeDraft(lessonType);
-            return {
-              lessonTypeId: lessonType.id,
-              ...draft,
-              mode: isNoviceLessonTypeName(lessonType.name) ? "NOVICE" : "PER_PERSON",
-            };
+            return normalizeConfigItem(
+              { lessonTypeId: lessonType.id, ...draft },
+              lessonType.name
+            );
           }),
         }),
       });
@@ -667,54 +671,46 @@ export default function PayrollPage() {
                     return (
                       <div key={lessonType.id} className="rounded-lg border border-slate-200 p-3 space-y-2">
                         <div className="text-sm font-semibold text-slate-800">{lessonType.name}</div>
-                        {config.mode === "NOVICE" ? (
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="text-sm text-slate-600">单人课</div>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step="0.01"
-                                  value={config.noviceSingleRate}
-                                  onChange={(e) =>
-                                    setLessonFeeConfigDraft((prev) => ({
-                                      ...prev,
-                                      [lessonType.id]: {
-                                        ...config,
-                                        noviceSingleRate: Number(e.target.value || 0),
-                                      },
-                                    }))
-                                  }
-                                  className="w-28 px-3 py-1.5 border border-slate-300 rounded-md text-right text-sm"
-                                />
-                                <span className="text-sm text-slate-500">元/节</span>
-                              </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-sm text-slate-600">
+                              {isSingleNoviceLessonType(lessonType.name) || config.mode === "PER_SESSION"
+                                ? "每节课时费"
+                                : "每人课时费"}
                             </div>
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="text-sm text-slate-600">多人课</div>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="number"
-                                  min={0}
-                                  step="0.01"
-                                  value={config.noviceMultiRatePerPerson}
-                                  onChange={(e) =>
-                                    setLessonFeeConfigDraft((prev) => ({
-                                      ...prev,
-                                      [lessonType.id]: {
-                                        ...config,
-                                        noviceMultiRatePerPerson: Number(e.target.value || 0),
-                                      },
-                                    }))
-                                  }
-                                  className="w-28 px-3 py-1.5 border border-slate-300 rounded-md text-right text-sm"
-                                />
-                                <span className="text-sm text-slate-500">元/人</span>
-                              </div>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                value={config.sessionRate}
+                                onChange={(e) =>
+                                  setLessonFeeConfigDraft((prev) => ({
+                                    ...prev,
+                                    [lessonType.id]: {
+                                      ...config,
+                                      sessionRate: Number(e.target.value || 0),
+                                    },
+                                  }))
+                                }
+                                className="w-28 px-3 py-1.5 border border-slate-300 rounded-md text-right text-sm"
+                              />
+                              <span className="text-sm text-slate-500">
+                                元/
+                                {isSingleNoviceLessonType(lessonType.name) || config.mode === "PER_SESSION"
+                                  ? "节"
+                                  : "人"}
+                              </span>
                             </div>
+                          </div>
+                          {isNoviceLessonTypeForFreeQuota(lessonType.name) && (
                             <div className="flex items-center justify-between gap-3">
-                              <div className="text-sm text-slate-600">全职免计人数</div>
+                              <div className="text-sm text-slate-600">
+                                全职免计人数
+                                <span className="block text-xs text-slate-400">
+                                  与所有新手课类型合并计算
+                                </span>
+                              </div>
                               <div className="flex items-center gap-2">
                                 <input
                                   type="number"
@@ -735,35 +731,8 @@ export default function PayrollPage() {
                                 <span className="text-sm text-slate-500">人</span>
                               </div>
                             </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="text-sm text-slate-600">
-                              {config.mode === "PER_PERSON" ? "每人课时费" : "标准课时费"}
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                min={0}
-                                step="0.01"
-                                value={config.sessionRate}
-                                onChange={(e) =>
-                                  setLessonFeeConfigDraft((prev) => ({
-                                    ...prev,
-                                    [lessonType.id]: {
-                                      ...config,
-                                      sessionRate: Number(e.target.value || 0),
-                                    },
-                                  }))
-                                }
-                                className="w-28 px-3 py-1.5 border border-slate-300 rounded-md text-right text-sm"
-                              />
-                              <span className="text-sm text-slate-500">
-                                元/{config.mode === "PER_PERSON" ? "人" : "节"}
-                              </span>
-                            </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     );
                   })}

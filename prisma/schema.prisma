@@ -199,3 +199,12 @@ model PayrollRecord {
   @@index([month])
   @@index([coachId])
 }
+
+model PayrollSettings {
+  key       String   @id
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payroll_settings")
+}
