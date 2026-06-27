@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const SESSION_COOKIE_NAME = "scheduler_session";
 const SESSION_TTL_SECONDS = 7 * 24 * 60 * 60;
-export type Role = "ADMIN" | "COACH";
+export type Role = "ADMIN" | "MANAGER" | "COACH";
 
 type SessionPayload = {
   userId: string;
@@ -49,7 +49,7 @@ function decodePayload(encoded: string): SessionPayload | null {
     ) {
       return null;
     }
-    if (parsed.role !== "ADMIN" && parsed.role !== "COACH") {
+    if (parsed.role !== "ADMIN" && parsed.role !== "MANAGER" && parsed.role !== "COACH") {
       return null;
     }
     return parsed;
@@ -121,4 +121,8 @@ export function unauthorized(message = "Unauthorized"): NextResponse {
 
 export function forbidden(message = "Forbidden"): NextResponse {
   return NextResponse.json({ error: message }, { status: 403 });
+}
+
+export function isManagerOrAdmin(role: Role): boolean {
+  return role === "ADMIN" || role === "MANAGER";
 }

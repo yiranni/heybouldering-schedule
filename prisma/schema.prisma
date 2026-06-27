@@ -12,34 +12,37 @@ datasource db {
 
 enum Role {
   ADMIN
+  MANAGER
   COACH
 }
 
 model User {
-  id           String   @id @default(cuid())
-  accountId    String   @unique @map("account_id")
-  passwordHash String
-  role         Role
-  name         String?
-  coach        Coach?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                    String                 @id @default(cuid())
+  accountId             String                 @unique @map("account_id")
+  passwordHash          String
+  role                  Role
+  name                  String?
+  coach                 Coach?
+  inventoryTransactions InventoryTransaction[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
 
   @@map("users")
 }
 
 model Store {
-  id        String        @id @default(cuid())
-  name      String
+  id                    String                 @id @default(cuid())
+  name                  String
   // 班次配置存储为JSON数组
   // 格式: [{ id: "shift1", name: "早班", start: "10:00", end: "20:00", daysOfWeek: [1,2,3,4,5] }]
   // daysOfWeek: 0=周日, 1=周一, ..., 6=周六。如果为空或null，表示全周适用
-  shifts    Json?
-  archived  Boolean       @default(false)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  coaches   CoachStore[]
-  schedules Schedule[]
+  shifts                Json?
+  archived              Boolean                @default(false)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  coaches               CoachStore[]
+  schedules             Schedule[]
+  inventoryTransactions InventoryTransaction[]
 
   @@map("stores")
 }
@@ -207,4 +210,65 @@ model PayrollSettings {
   updatedAt DateTime @updatedAt
 
   @@map("payroll_settings")
+}
+
+// 零售产品
+model Product {
+  id        String           @id @default(cuid())
+  brand     String
+  name      String
+  archived  Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  variants  ProductVariant[]
+
+  @@map("products")
+}
+
+// 产品规格（e.g. 鞋码 39、镁粉大包）
+model ProductVariant {
+  id           String                 @id @default(cuid())
+  productId    String
+  spec         String
+  price        Float
+  archived     Boolean                @default(false)
+  product      Product                @relation(fields: [productId], references: [id], onDelete: Cascade)
+  transactions InventoryTransaction[]
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  @@map("product_variants")
+}
+
+enum InventoryTransactionType {
+  STOCK_IN     // 入库
+  TRANSFER_OUT // 调货-转出
+  TRANSFER_IN  // 调货-转入（与 TRANSFER_OUT 通过 transferPairId 配对）
+  RETURN       // 退货回库
+  ADJUSTMENT   // 手动修正
+  SALE         // 销货
+}
+
+// 库存流水；当前库存 = SUM(quantityDelta) WHERE variantId=x AND storeId=y
+model InventoryTransaction {
+  id             String                   @id @default(cuid())
+  variantId      String
+  type           InventoryTransactionType
+  quantityDelta  Int
+  unitPrice      Float
+  note           String?
+  performedById  String
+  storeId        String
+  transferPairId String?
+  performedAt    DateTime
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+  variant        ProductVariant           @relation(fields: [variantId], references: [id])
+  performedBy    User                     @relation(fields: [performedById], references: [id])
+  store          Store                    @relation(fields: [storeId], references: [id])
+
+  @@map("inventory_transactions")
+  @@index([variantId, storeId])
+  @@index([performedAt])
+  @@index([transferPairId])
 }

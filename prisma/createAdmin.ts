@@ -13,7 +13,7 @@ async function main() {
   const password = passwordArg || process.env.ADMIN_PASSWORD || "";
   const name = nameArg || process.env.ADMIN_NAME || "管理员";
   const roleInput = (roleArg || process.env.ADMIN_ROLE || "ADMIN").toUpperCase();
-  const role: Role = roleInput === "COACH" ? "COACH" : "ADMIN";
+  const role: Role = roleInput === "COACH" ? "COACH" : roleInput === "MANAGER" ? "MANAGER" : "ADMIN";
 
   if (!accountId || !password) {
     console.error("用法: npm run user:create-admin -- <account_id> <password> [name] [role]");

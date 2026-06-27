@@ -7,7 +7,7 @@ interface AuthGuardProps {
   children: React.ReactNode;
 }
 
-type AuthRole = 'ADMIN' | 'COACH';
+type AuthRole = 'ADMIN' | 'MANAGER' | 'COACH';
 
 type AuthUser = {
   id: string;

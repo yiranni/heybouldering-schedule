@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { prisma } from '@/app/lib/prisma';
 import { forbidden, getSessionFromRequest, unauthorized } from '@/app/lib/auth';
 import { hashPassword } from '@/app/lib/password';
@@ -84,40 +85,86 @@ export async function POST(request: NextRequest) {
     const accountBase = normalizeAccountBase(name);
     const accountId = await generateUniqueAccountId(accountBase);
     const passwordHash = await hashPassword(DEFAULT_COACH_PASSWORD);
+    const userId = randomUUID();
+    const coachId = randomUUID();
+    const resolvedEmploymentType = employmentType || 'FULL_TIME';
+    const resolvedWeekSchedule = weekSchedule ? JSON.stringify(weekSchedule) : null;
 
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          accountId,
-          passwordHash,
-          role: 'COACH',
-          name,
-        },
-        select: {
-          id: true,
-          accountId: true,
-        },
-      });
+    const coach = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        INSERT INTO users (id, account_id, "passwordHash", role, name, "createdAt", "updatedAt")
+        VALUES (${userId}, ${accountId}, ${passwordHash}, 'COACH'::"Role", ${name}, NOW(), NOW())
+      `;
 
-      const coach = await tx.coach.create({
-        data: {
-          userId: user.id,
+      await tx.$executeRaw`
+        INSERT INTO coaches (
+          id,
+          user_id,
           name,
           color,
           avatar,
-          employmentType: employmentType || 'FULL_TIME',
-          weekSchedule: weekSchedule || null,
-        },
-      });
+          archived,
+          "employmentType",
+          "weekSchedule",
+          "createdAt",
+          "updatedAt"
+        )
+        VALUES (
+          ${coachId},
+          ${userId},
+          ${name},
+          ${color},
+          ${avatar},
+          false,
+          ${resolvedEmploymentType},
+          ${resolvedWeekSchedule}::jsonb,
+          NOW(),
+          NOW()
+        )
+      `;
 
-      return { coach, user };
+      const coaches = await tx.$queryRaw<
+        Array<{
+          id: string;
+          userId: string | null;
+          name: string;
+          color: string;
+          avatar: string;
+          archived: boolean;
+          employmentType: string;
+          weekSchedule: unknown;
+          createdAt: Date;
+          updatedAt: Date;
+        }>
+      >`
+        SELECT
+          id,
+          user_id AS "userId",
+          name,
+          color,
+          avatar,
+          archived,
+          "employmentType",
+          "weekSchedule",
+          "createdAt",
+          "updatedAt"
+        FROM coaches
+        WHERE id = ${coachId}
+      `;
+
+      const createdCoach = coaches[0];
+      if (!createdCoach) {
+        throw new Error('Failed to create coach');
+      }
+
+      return createdCoach;
     });
 
     return NextResponse.json(
       {
-        ...result.coach,
+        ...coach,
         account: {
-          accountId: result.user.accountId,
+          accountId,
           defaultPassword: DEFAULT_COACH_PASSWORD,
         },
       },
