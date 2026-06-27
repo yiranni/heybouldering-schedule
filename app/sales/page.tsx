@@ -1,21 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Calendar, Plus } from "lucide-react";
+import { useMemo } from "react";
+import { Calendar } from "lucide-react";
 import { useAuth } from "../components/AuthGuard";
 import TopNavMenu from "../components/TopNavMenu";
 import { useCoaches } from "../hooks/useCoaches";
 import { useSalesRecords } from "../hooks/useSalesRecords";
 import { useCommissionRules } from "../hooks/useCommissionRules";
-import { useSalesCategories } from "../hooks/useSalesCategories";
 import CommissionRuleList from "../components/CommissionRuleList";
-import SalesRecordModal from "../components/SalesRecordModal";
 import SalesRecordTable from "../components/SalesRecordTable";
 import SalesAnalytics from "../components/SalesAnalytics";
 
 export default function SalesPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = user?.role === "ADMIN" || user?.role === "MANAGER";
 
   const { coaches, loading: coachesLoading, error: coachesError } = useCoaches();
   const {
@@ -32,25 +30,11 @@ export default function SalesPage() {
     error: recordsError,
     filters,
     updateFilters,
-    createSalesRecord,
     deleteSalesRecord,
   } = useSalesRecords();
-  const {
-    categories,
-    loading: categoriesLoading,
-    error: categoriesError,
-  } = useSalesCategories();
 
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const myCoach = useMemo(
-    () =>
-      coaches.find((coach) => coach.userId === user?.id) ||
-      coaches.find((coach) => coach.name === (user?.name || "")),
-    [coaches, user?.id, user?.name]
-  );
-
-  const loading = coachesLoading || recordsLoading || rulesLoading || categoriesLoading;
-  const error = coachesError || recordsError || rulesError || categoriesError;
+  const loading = coachesLoading || recordsLoading || rulesLoading;
+  const error = coachesError || recordsError || rulesError;
   const totalAmount = salesRecords.reduce((sum, r) => sum + (r.amount || 0), 0);
   const matchedRule = [...commissionRules]
     .sort((a, b) => b.minAmount - a.minAmount)
@@ -68,13 +52,6 @@ export default function SalesPage() {
             <TopNavMenu current="sales" isAdmin={isAdmin} />
           </div>
 
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-md font-medium transition-all shadow-lg active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            新增销售记录
-          </button>
         </div>
       </header>
 
@@ -115,17 +92,6 @@ export default function SalesPage() {
         )}
       </main>
 
-      <SalesRecordModal
-        isOpen={showCreateModal}
-        canSelectCoach={isAdmin}
-        coaches={coaches}
-        categories={categories}
-        defaultCoachId={myCoach?.id}
-        onClose={() => setShowCreateModal(false)}
-        onCreate={async (payload) => {
-          await createSalesRecord(payload);
-        }}
-      />
     </div>
   );
 }

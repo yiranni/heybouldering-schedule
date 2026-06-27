@@ -14,7 +14,8 @@ const TYPE_LABELS: Record<TransactionType, string> = {
   TRANSFER_IN: "调货-转入",
   RETURN: "退货",
   ADJUSTMENT: "手动修正",
-  SALE: "销货",
+  SALE: "售卖",
+  WRITEOFF: "销货",
 };
 
 const TYPE_COLORS: Record<TransactionType, string> = {
@@ -24,6 +25,7 @@ const TYPE_COLORS: Record<TransactionType, string> = {
   RETURN: "bg-purple-100 text-purple-700",
   ADJUSTMENT: "bg-slate-100 text-slate-700",
   SALE: "bg-emerald-100 text-emerald-700",
+  WRITEOFF: "bg-rose-100 text-rose-700",
 };
 
 function formatDate(iso: string) {

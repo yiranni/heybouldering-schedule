@@ -46,12 +46,13 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const type = String(body?.type || "") as InventoryTransactionType;
   const validTypes: InventoryTransactionType[] = [
-    "STOCK_IN", "TRANSFER_OUT", "RETURN", "ADJUSTMENT", "SALE",
+    "STOCK_IN", "TRANSFER_OUT", "RETURN", "ADJUSTMENT", "SALE", "WRITEOFF",
   ];
   if (!validTypes.includes(type)) {
     return NextResponse.json({ error: "无效的 type" }, { status: 400 });
   }
 
+  // SALE (售卖) is open to all users; everything else requires manager/admin
   if (type !== "SALE" && !isManagerOrAdmin(session.role)) {
     return forbidden("入库/调货操作需要管理员或经理权限");
   }
@@ -130,9 +131,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ transferOut: txOut, transferIn: txIn }, { status: 201 });
   }
 
-  const delta = type === "SALE" ? -Math.abs(quantityDelta) : quantityDelta;
+  const delta = (type === "SALE" || type === "WRITEOFF") ? -Math.abs(quantityDelta) : quantityDelta;
 
-  if (type === "SALE" || (type === "ADJUSTMENT" && delta < 0)) {
+  if (type === "SALE" || type === "WRITEOFF" || (type === "ADJUSTMENT" && delta < 0)) {
     const available = await getCurrentStock(variantId, storeId);
     const needed = Math.abs(delta);
     if (available < needed) {
@@ -143,22 +144,47 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const tx = await prisma.inventoryTransaction.create({
-    data: {
-      variantId,
-      type,
-      quantityDelta: delta,
-      unitPrice,
-      note,
-      performedById: session.userId,
-      storeId,
-      performedAt,
-    },
-    include: {
-      variant: { include: { product: { select: { id: true, brand: true, name: true } } } },
-      store: { select: { id: true, name: true } },
-      performedBy: { select: { id: true, name: true, role: true } },
-    },
+  const tx = await prisma.$transaction(async (db) => {
+    const invTx = await db.inventoryTransaction.create({
+      data: {
+        variantId,
+        type,
+        quantityDelta: delta,
+        unitPrice,
+        note,
+        performedById: session.userId,
+        storeId,
+        performedAt,
+      },
+      include: {
+        variant: { include: { product: { select: { id: true, brand: true, name: true } } } },
+        store: { select: { id: true, name: true } },
+        performedBy: { select: { id: true, name: true, role: true } },
+      },
+    });
+
+    if (type === "SALE" || type === "WRITEOFF") {
+      const coach = await db.coach.findFirst({
+        where: { userId: session.userId, archived: false },
+        select: { id: true },
+      });
+      const spec = invTx.variant.spec;
+      const productName = [invTx.variant.product.brand, invTx.variant.product.name, spec || null]
+        .filter(Boolean)
+        .join(" · ");
+      await db.salesRecord.create({
+        data: {
+          coachId: coach?.id ?? null,
+          productName,
+          amount: invTx.unitPrice * Math.abs(invTx.quantityDelta),
+          soldAt: invTx.performedAt,
+          note: invTx.note ?? null,
+          inventoryTransactionId: invTx.id,
+        },
+      });
+    }
+
+    return invTx;
   });
 
   return NextResponse.json(tx, { status: 201 });

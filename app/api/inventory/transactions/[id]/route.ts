@@ -13,6 +13,8 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   if (tx.transferPairId) {
     await prisma.inventoryTransaction.deleteMany({ where: { transferPairId: tx.transferPairId } });
   } else {
+    // Delete linked SalesRecord first (if this was a SALE)
+    await prisma.salesRecord.deleteMany({ where: { inventoryTransactionId: params.id } });
     await prisma.inventoryTransaction.delete({ where: { id: params.id } });
   }
 

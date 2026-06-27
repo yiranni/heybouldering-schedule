@@ -143,17 +143,18 @@ model LessonRecord {
 
 // 销售记录
 model SalesRecord {
-  id          String       @id @default(cuid())
-  coachId     String
-  salesCategoryId String?
-  productName String
-  amount      Float
-  soldAt      DateTime
-  note        String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  coach       Coach        @relation(fields: [coachId], references: [id], onDelete: Cascade)
-  salesCategory SalesCategory? @relation(fields: [salesCategoryId], references: [id], onDelete: SetNull)
+  id                     String         @id @default(cuid())
+  coachId                String?
+  salesCategoryId        String?
+  productName            String
+  amount                 Float
+  soldAt                 DateTime
+  note                   String?
+  inventoryTransactionId String?        @unique
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  coach                  Coach?         @relation(fields: [coachId], references: [id], onDelete: SetNull)
+  salesCategory          SalesCategory? @relation(fields: [salesCategoryId], references: [id], onDelete: SetNull)
 
   @@map("sales_records")
   @@index([coachId])
@@ -246,7 +247,8 @@ enum InventoryTransactionType {
   TRANSFER_IN  // 调货-转入（与 TRANSFER_OUT 通过 transferPairId 配对）
   RETURN       // 退货回库
   ADJUSTMENT   // 手动修正
-  SALE         // 销货
+  SALE         // 售卖（所有用户）
+  WRITEOFF     // 销货（仅管理员/经理）
 }
 
 // 库存流水；当前库存 = SUM(quantityDelta) WHERE variantId=x AND storeId=y

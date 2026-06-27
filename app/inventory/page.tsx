@@ -360,7 +360,8 @@ export default function InventoryPage() {
                   <option value="TRANSFER_IN">调货-转入</option>
                   <option value="RETURN">退货</option>
                   <option value="ADJUSTMENT">手动修正</option>
-                  <option value="SALE">销货</option>
+                  <option value="SALE">售卖</option>
+                  <option value="WRITEOFF">销货</option>
                 </select>
                 <input
                   type="date"
@@ -463,7 +464,7 @@ export default function InventoryPage() {
         preselectedVariantId={preselectedVariantId}
         onClose={() => { setShowStockSale(false); setPreselectedVariantId(undefined); }}
         onSubmit={(data) =>
-          handleTransaction({ ...data, type: "SALE" })
+          handleTransaction({ ...data, type: "WRITEOFF" })
         }
       />
     </div>

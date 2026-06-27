@@ -8,7 +8,8 @@ export type TransactionType =
   | "TRANSFER_IN"
   | "RETURN"
   | "ADJUSTMENT"
-  | "SALE";
+  | "SALE"
+  | "WRITEOFF";
 
 export type InventoryTransaction = {
   id: string;
