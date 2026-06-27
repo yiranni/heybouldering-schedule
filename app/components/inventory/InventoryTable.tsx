@@ -92,18 +92,23 @@ export default function InventoryTable({
             const isOpen = expanded.has(product.id);
             const activeVariants = product.variants.filter((v) => !v.archived);
 
+            const isSingleVariant = activeVariants.length <= 1;
+            const singleVariant = isSingleVariant ? activeVariants[0] : null;
+
             return (
               <>
                 <tr
                   key={product.id}
-                  className="hover:bg-slate-50 cursor-pointer"
-                  onClick={() => toggle(product.id)}
+                  className={isSingleVariant ? "" : "hover:bg-slate-50 cursor-pointer"}
+                  onClick={isSingleVariant ? undefined : () => toggle(product.id)}
                 >
                   <td className="px-4 py-3 text-slate-400">
-                    {isOpen ? (
-                      <ChevronDown className="w-4 h-4" />
-                    ) : (
-                      <ChevronRight className="w-4 h-4" />
+                    {!isSingleVariant && (
+                      isOpen ? (
+                        <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4" />
+                      )
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -111,9 +116,13 @@ export default function InventoryTable({
                     <div className="text-xs text-slate-500">{product.brand}</div>
                   </td>
                   <td className="px-4 py-3 text-slate-500 text-xs">
-                    {activeVariants.length} 个规格
+                    {isSingleVariant
+                      ? <span className="text-slate-300">—</span>
+                      : `${activeVariants.length} 个规格`}
                   </td>
-                  <td className="px-4 py-3"></td>
+                  <td className="px-4 py-3 text-right text-slate-600">
+                    {singleVariant ? `¥${singleVariant.price.toFixed(2)}` : ""}
+                  </td>
                   {stores.map((s) => (
                     <td key={s.id} className="px-4 py-3 text-right text-slate-500">
                       {activeVariants.reduce((sum, v) => sum + getStock(v.id, s.id), 0)}
@@ -132,7 +141,7 @@ export default function InventoryTable({
                     >
                       <Tooltip label="售卖">
                         <button
-                          onClick={() => onRetailSale(product)}
+                          onClick={() => onRetailSale(product, singleVariant?.id)}
                           className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded"
                         >
                           <ShoppingCart className="w-4 h-4" />
@@ -141,7 +150,7 @@ export default function InventoryTable({
                       {isManager && onStockSale && (
                         <Tooltip label="销货">
                           <button
-                            onClick={() => onStockSale(product)}
+                            onClick={() => onStockSale(product, singleVariant?.id)}
                             className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded"
                           >
                             <Tag className="w-4 h-4" />
@@ -152,7 +161,7 @@ export default function InventoryTable({
                         <>
                           <Tooltip label="入库">
                             <button
-                              onClick={() => onStockIn(product)}
+                              onClick={() => onStockIn(product, singleVariant?.id)}
                               className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
                             >
                               <PackagePlus className="w-4 h-4" />
@@ -160,7 +169,7 @@ export default function InventoryTable({
                           </Tooltip>
                           <Tooltip label="调货">
                             <button
-                              onClick={() => onAdjust(product)}
+                              onClick={() => onAdjust(product, singleVariant?.id)}
                               className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded"
                             >
                               <ArrowLeftRight className="w-4 h-4" />
@@ -190,7 +199,7 @@ export default function InventoryTable({
                   </td>
                 </tr>
 
-                {isOpen &&
+                {!isSingleVariant && isOpen &&
                   activeVariants.map((variant) => (
                     <tr key={variant.id} className="bg-slate-50/50">
                       <td className="px-4 py-2"></td>

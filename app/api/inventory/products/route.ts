@@ -44,12 +44,10 @@ export async function POST(request: NextRequest) {
       brand,
       name,
       variants: {
-        create: variants
-          .filter((v) => v.spec?.trim())
-          .map((v) => ({
-            spec: String(v.spec).trim(),
-            price: Number(v.price) || 0,
-          })),
+        create: variants.map((v) => ({
+          spec: String(v.spec || "").trim(),
+          price: Number(v.price) || 0,
+        })),
       },
     },
     include: {

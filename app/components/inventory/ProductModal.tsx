@@ -26,6 +26,7 @@ function variantToRow(v: ProductVariant): VariantRow {
 export default function ProductModal({ isOpen, product, onClose, onSave }: ProductModalProps) {
   const [brand, setBrand] = useState("");
   const [name, setName] = useState("");
+  const [hasSpecs, setHasSpecs] = useState(false);
   const [variants, setVariants] = useState<VariantRow[]>([{ spec: "", price: "" }]);
   const [bulkPrice, setBulkPrice] = useState("");
   const [archivedIds, setArchivedIds] = useState<string[]>([]);
@@ -35,13 +36,19 @@ export default function ProductModal({ isOpen, product, onClose, onSave }: Produ
     if (!isOpen) return;
     setBrand(product?.brand ?? "");
     setName(product?.name ?? "");
-    setVariants(
-      product?.variants.length
-        ? product.variants.map(variantToRow)
-        : [{ spec: "", price: "" }]
-    );
     setArchivedIds([]);
     setBulkPrice("");
+
+    if (product) {
+      const rows = product.variants.length ? product.variants.map(variantToRow) : [{ spec: "", price: "" }];
+      setVariants(rows);
+      const activeVariants = product.variants.filter((v) => !v.archived);
+      const isSingleNoSpec = activeVariants.length === 1 && !activeVariants[0].spec.trim();
+      setHasSpecs(!isSingleNoSpec && activeVariants.length > 0);
+    } else {
+      setVariants([{ spec: "", price: "" }]);
+      setHasSpecs(false);
+    }
   }, [isOpen, product]);
 
   if (!isOpen) return null;
@@ -50,12 +57,22 @@ export default function ProductModal({ isOpen, product, onClose, onSave }: Produ
     setVariants((prev) => prev.map((v, i) => (i === idx ? { ...v, [field]: value } : v)));
   };
 
-  const addVariant = () => setVariants((prev) => [...prev, { spec: "", price: "" }]);
+  const addVariant = () => {
+    setHasSpecs(true);
+    setVariants((prev) => [...prev, { spec: "", price: "" }]);
+  };
 
   const removeVariant = (idx: number) => {
     const row = variants[idx];
     if (row.id) setArchivedIds((prev) => [...prev, row.id!]);
-    setVariants((prev) => prev.filter((_, i) => i !== idx));
+    setVariants((prev) => {
+      const next = prev.filter((_, i) => i !== idx);
+      if (next.length === 0) {
+        setHasSpecs(false);
+        return [{ spec: "", price: "" }];
+      }
+      return next;
+    });
   };
 
   const applyBulkPrice = () => {
@@ -68,10 +85,16 @@ export default function ProductModal({ isOpen, product, onClose, onSave }: Produ
       alert("品牌和产品名称为必填");
       return;
     }
-    const validVariants = variants.filter((v) => v.spec.trim());
-    if (!validVariants.length) {
-      alert("请至少添加一个规格");
-      return;
+
+    let validVariants: VariantRow[];
+    if (!hasSpecs) {
+      validVariants = variants.slice(0, 1);
+    } else {
+      validVariants = variants.filter((v) => v.spec.trim());
+      if (!validVariants.length) {
+        alert("请至少填写一个规格名称");
+        return;
+      }
     }
 
     setSaving(true);
@@ -131,70 +154,85 @@ export default function ProductModal({ isOpen, product, onClose, onSave }: Produ
             </div>
           </div>
 
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-slate-700">规格列表</label>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">批量设价：</span>
-                <input
-                  type="number"
-                  value={bulkPrice}
-                  onChange={(e) => setBulkPrice(e.target.value)}
-                  placeholder="统一价格"
-                  min="0"
-                  step="0.01"
-                  className="w-24 px-2 py-1 border border-slate-300 rounded text-xs"
-                />
-                <button
-                  type="button"
-                  onClick={applyBulkPrice}
-                  className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-700"
-                >
-                  应用
-                </button>
-              </div>
+          {!hasSpecs ? (
+            <div>
+              <label className="text-sm text-slate-600 block mb-1">售价（元）</label>
+              <input
+                type="number"
+                value={variants[0]?.price ?? ""}
+                onChange={(e) => setVariantField(0, "price", e.target.value)}
+                placeholder="单价"
+                min="0"
+                step="0.01"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+              />
             </div>
-
-            <div className="space-y-2">
-              {variants.map((v, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={v.spec}
-                    onChange={(e) => setVariantField(idx, "spec", e.target.value)}
-                    placeholder="规格（如 39码 / 大包）"
-                    className="flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm"
-                  />
+          ) : (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-slate-700">规格列表</label>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500">批量设价：</span>
                   <input
                     type="number"
-                    value={v.price}
-                    onChange={(e) => setVariantField(idx, "price", e.target.value)}
-                    placeholder="单价（元）"
+                    value={bulkPrice}
+                    onChange={(e) => setBulkPrice(e.target.value)}
+                    placeholder="统一价格"
                     min="0"
                     step="0.01"
-                    className="w-32 px-3 py-2 border border-slate-300 rounded-md text-sm"
+                    className="w-24 px-2 py-1 border border-slate-300 rounded text-xs"
                   />
                   <button
                     type="button"
-                    onClick={() => removeVariant(idx)}
-                    disabled={variants.length === 1 && !v.id}
-                    className="p-2 text-slate-400 hover:text-red-500 disabled:opacity-30"
+                    onClick={applyBulkPrice}
+                    className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-700"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    应用
                   </button>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <button
-              type="button"
-              onClick={addVariant}
-              className="mt-2 flex items-center gap-1 text-sm text-emerald-600 hover:text-emerald-500"
-            >
-              <Plus className="w-4 h-4" />
-              添加规格
-            </button>
-          </div>
+              <div className="space-y-2">
+                {variants.map((v, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={v.spec}
+                      onChange={(e) => setVariantField(idx, "spec", e.target.value)}
+                      placeholder="规格名称（如 39码 / 大包）"
+                      className="flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm"
+                    />
+                    <input
+                      type="number"
+                      value={v.price}
+                      onChange={(e) => setVariantField(idx, "price", e.target.value)}
+                      placeholder="单价（元）"
+                      min="0"
+                      step="0.01"
+                      className="w-32 px-3 py-2 border border-slate-300 rounded-md text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeVariant(idx)}
+                      disabled={variants.length === 1 && !v.id}
+                      className="p-2 text-slate-400 hover:text-red-500 disabled:opacity-30"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={addVariant}
+            className="flex items-center gap-1 text-sm text-emerald-600 hover:text-emerald-500"
+          >
+            <Plus className="w-4 h-4" />
+            添加规格
+          </button>
         </div>
 
         <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">

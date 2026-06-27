@@ -8,10 +8,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
   if (!isManagerOrAdmin(session.role)) return forbidden("需要管理员或经理权限");
 
   const body = await request.json();
-  const spec = String(body?.spec || "").trim();
+  const spec = String(body?.spec ?? "").trim();
   const price = Number(body?.price);
-
-  if (!spec) return NextResponse.json({ error: "spec 为必填字段" }, { status: 400 });
   if (Number.isNaN(price) || price < 0) {
     return NextResponse.json({ error: "price 必须为非负数" }, { status: 400 });
   }
