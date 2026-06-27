@@ -114,7 +114,8 @@ export default function InventoryPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showStockIn, setShowStockIn] = useState(false);
   const [showAdjust, setShowAdjust] = useState(false);
-  const [showSale, setShowSale] = useState(false);
+  const [showRetailSale, setShowRetailSale] = useState(false);
+  const [showStockSale, setShowStockSale] = useState(false);
   const [preselectedProduct, setPreselectedProduct] = useState<Product | null>(null);
 
   const openStockIn = (product?: Product) => {
@@ -127,9 +128,14 @@ export default function InventoryPage() {
     setShowAdjust(true);
   };
 
-  const openSale = (product?: Product) => {
+  const openRetailSale = (product?: Product) => {
     setPreselectedProduct(product ?? null);
-    setShowSale(true);
+    setShowRetailSale(true);
+  };
+
+  const openStockSale = (product?: Product) => {
+    setPreselectedProduct(product ?? null);
+    setShowStockSale(true);
   };
 
   const handleSaveProduct = async (data: {
@@ -174,14 +180,21 @@ export default function InventoryPage() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => openSale()}
+              onClick={() => openRetailSale()}
               className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-md text-sm font-medium transition-all shadow-lg active:scale-95"
             >
               <ShoppingCart className="w-4 h-4" />
-              销货
+              售卖
             </button>
             {isManager && (
               <>
+                <button
+                  onClick={() => openStockSale()}
+                  className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-md text-sm font-medium transition-all shadow-lg active:scale-95"
+                >
+                  <ShoppingCart className="w-4 h-4" />
+                  销货
+                </button>
                 <button
                   onClick={() => openStockIn()}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-md text-sm font-medium transition-all shadow-lg active:scale-95"
@@ -281,7 +294,8 @@ export default function InventoryPage() {
                   isManager={isManager}
                   onStockIn={(p) => openStockIn(p)}
                   onAdjust={(p) => openAdjust(p)}
-                  onSale={(p) => openSale(p)}
+                  onRetailSale={(p) => openRetailSale(p)}
+                  onStockSale={isManager ? (p) => openStockSale(p) : undefined}
                   onEdit={(p) => {
                     setEditingProduct(p);
                     setShowProductModal(true);
@@ -417,11 +431,24 @@ export default function InventoryPage() {
       />
 
       <SaleModal
-        isOpen={showSale}
+        isOpen={showRetailSale}
+        title="售卖"
         products={products}
         stores={activeStores}
         getQuantity={getQuantity}
-        onClose={() => setShowSale(false)}
+        onClose={() => setShowRetailSale(false)}
+        onSubmit={(data) =>
+          handleTransaction({ ...data, type: "SALE" })
+        }
+      />
+
+      <SaleModal
+        isOpen={showStockSale}
+        title="销货"
+        products={products}
+        stores={activeStores}
+        getQuantity={getQuantity}
+        onClose={() => setShowStockSale(false)}
         onSubmit={(data) =>
           handleTransaction({ ...data, type: "SALE" })
         }

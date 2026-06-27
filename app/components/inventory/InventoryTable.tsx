@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Edit2, PackagePlus, ArrowLeftRight, ShoppingCart, Archive } from "lucide-react";
+import { ChevronDown, ChevronRight, Edit2, PackagePlus, ArrowLeftRight, ShoppingCart, Tag, Archive } from "lucide-react";
 import type { Product } from "../../hooks/useInventoryProducts";
 import type { StockEntry } from "../../hooks/useInventoryStock";
 
@@ -26,7 +26,8 @@ type InventoryTableProps = {
   isManager: boolean;
   onStockIn: (product: Product) => void;
   onAdjust: (product: Product) => void;
-  onSale: (product: Product) => void;
+  onRetailSale: (product: Product) => void;
+  onStockSale?: (product: Product) => void;
   onEdit: (product: Product) => void;
   onArchive: (product: Product) => void;
 };
@@ -38,7 +39,8 @@ export default function InventoryTable({
   isManager,
   onStockIn,
   onAdjust,
-  onSale,
+  onRetailSale,
+  onStockSale,
   onEdit,
   onArchive,
 }: InventoryTableProps) {
@@ -128,14 +130,24 @@ export default function InventoryTable({
                       className="flex items-center justify-end gap-1"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <Tooltip label="销货">
+                      <Tooltip label="售卖">
                         <button
-                          onClick={() => onSale(product)}
+                          onClick={() => onRetailSale(product)}
                           className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded"
                         >
                           <ShoppingCart className="w-4 h-4" />
                         </button>
                       </Tooltip>
+                      {isManager && onStockSale && (
+                        <Tooltip label="销货">
+                          <button
+                            onClick={() => onStockSale(product)}
+                            className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded"
+                          >
+                            <Tag className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
+                      )}
                       {isManager && (
                         <>
                           <Tooltip label="入库">

@@ -7,6 +7,7 @@ type Store = { id: string; name: string };
 
 type SaleModalProps = {
   isOpen: boolean;
+  title?: string;
   products: Product[];
   stores: Store[];
   getQuantity: (variantId: string, storeId: string) => number;
@@ -23,6 +24,7 @@ type SaleModalProps = {
 
 export default function SaleModal({
   isOpen,
+  title = "销货",
   products,
   stores,
   getQuantity,
@@ -79,7 +81,7 @@ export default function SaleModal({
       return;
     }
     if (!qty || qty <= 0) { alert("销售数量必须大于 0"); return; }
-    if (outOfStock) { alert("当前库存为 0，无法销货"); return; }
+    if (outOfStock) { alert(`当前库存为 0，无法${title}`); return; }
     if (stockInsufficient) { alert(`库存不足，当前库存 ${currentStock}`); return; }
     const price = Number(unitPrice);
     if (Number.isNaN(price) || price < 0) { alert("请填写有效价格"); return; }
@@ -96,7 +98,7 @@ export default function SaleModal({
       });
       onClose();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "销货失败");
+      alert(e instanceof Error ? e.message : `${title}失败`);
     } finally {
       setSaving(false);
     }
@@ -106,7 +108,7 @@ export default function SaleModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl">
         <div className="px-6 py-4 border-b border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-800">销货</h3>
+          <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
         </div>
 
         <div className="px-6 py-5 space-y-4">
@@ -164,7 +166,7 @@ export default function SaleModal({
               ))}
             </select>
             {outOfStock && (
-              <p className="mt-1 text-xs text-red-500">该门店此规格库存为 0，无法销货</p>
+              <p className="mt-1 text-xs text-red-500">该门店此规格库存为 0，无法{title}</p>
             )}
           </div>
 
@@ -231,7 +233,7 @@ export default function SaleModal({
             disabled={saving || outOfStock || stockInsufficient}
             className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
-            {saving ? "提交中..." : "确认销货"}
+            {saving ? "提交中..." : `确认${title}`}
           </button>
         </div>
       </div>
