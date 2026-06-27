@@ -424,6 +424,8 @@ export default function InventoryPage() {
         preselectedProductId={preselectedProduct?.id}
         preselectedVariantId={preselectedVariantId}
         onClose={() => { setShowStockIn(false); setPreselectedVariantId(undefined); }}
+        onAddVariant={addVariant}
+        onRemoveVariant={archiveVariant}
         onSubmit={(data) =>
           handleTransaction({ ...data, type: "STOCK_IN" })
         }

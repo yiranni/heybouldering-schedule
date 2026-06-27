@@ -1,15 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { Product } from "../../hooks/useInventoryProducts";
+import { useEffect, useRef, useState } from "react";
+import { Plus, X } from "lucide-react";
+import type { Product, ProductVariant } from "../../hooks/useInventoryProducts";
 
 type Store = { id: string; name: string };
 
 type VariantRow = {
-  variantId: string;
+  key: string;
+  variantId: string | null;  // null = new, not in DB yet
   spec: string;
   qty: string;
   unitPrice: string;
+  isNew: boolean;
+  pendingRemove: boolean;
 };
 
 type StockInModalProps = {
@@ -19,6 +23,8 @@ type StockInModalProps = {
   preselectedProductId?: string;
   preselectedVariantId?: string;
   onClose: () => void;
+  onAddVariant?: (productId: string, data: { spec: string; price: number }) => Promise<ProductVariant>;
+  onRemoveVariant?: (variantId: string) => Promise<void>;
   onSubmit: (data: {
     variantId: string;
     storeId: string;
@@ -36,6 +42,8 @@ export default function StockInModal({
   preselectedProductId,
   preselectedVariantId,
   onClose,
+  onAddVariant,
+  onRemoveVariant,
   onSubmit,
 }: StockInModalProps) {
   const [productId, setProductId] = useState("");
@@ -44,6 +52,7 @@ export default function StockInModal({
   const [note, setNote] = useState("");
   const [performedAt, setPerformedAt] = useState("");
   const [saving, setSaving] = useState(false);
+  const newRowCounter = useRef(0);
 
   const activeProducts = products.filter((p) => !p.archived);
   const selectedProduct = activeProducts.find((p) => p.id === productId);
@@ -51,19 +60,20 @@ export default function StockInModal({
 
   const buildRows = (variants: typeof activeVariants): VariantRow[] =>
     variants.map((v) => ({
+      key: v.id,
       variantId: v.id,
       spec: v.spec,
       qty: "",
       unitPrice: String(v.price),
+      isNew: false,
+      pendingRemove: false,
     }));
 
-  // Rebuild rows when product changes
   useEffect(() => {
     setRows(buildRows(activeVariants));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
 
-  // Init on open
   useEffect(() => {
     if (!isOpen) return;
     const initProductId = preselectedProductId ?? activeProducts[0]?.id ?? "";
@@ -77,36 +87,81 @@ export default function StockInModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
-  const updateRow = (variantId: string, field: "qty" | "unitPrice", value: string) => {
-    setRows((prev) => prev.map((r) => (r.variantId === variantId ? { ...r, [field]: value } : r)));
+  const updateRow = (key: string, patch: Partial<VariantRow>) => {
+    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+  };
+
+  const removeRow = (key: string, isNew: boolean) => {
+    if (isNew) {
+      setRows((prev) => prev.filter((r) => r.key !== key));
+    } else {
+      setRows((prev) => prev.map((r) => (r.key === key ? { ...r, pendingRemove: true } : r)));
+    }
+  };
+
+  const addNewRow = () => {
+    const key = `new-${++newRowCounter.current}`;
+    setRows((prev) => [
+      ...prev,
+      { key, variantId: null, spec: "", qty: "", unitPrice: "", isNew: true, pendingRemove: false },
+    ]);
   };
 
   if (!isOpen) return null;
 
-  const toSubmit = rows.filter((r) => r.qty !== "" && Number(r.qty) > 0);
+  const visibleRows = rows.filter((r) => !r.pendingRemove);
+  const toSubmitRows = visibleRows.filter((r) => r.qty !== "" && Number(r.qty) > 0);
+  const toRemoveRows = rows.filter((r) => r.pendingRemove && r.variantId);
+  const canEditVariants = !!(onAddVariant || onRemoveVariant);
 
   const handleSubmit = async () => {
     if (!storeId || !performedAt) {
       alert("请选择门店和操作时间");
       return;
     }
-    if (!toSubmit.length) {
-      alert("请至少填写一个规格的入库数量");
+    for (const r of toSubmitRows.filter((r) => r.isNew)) {
+      if (!r.spec.trim()) {
+        alert("新增规格的规格名不能为空");
+        return;
+      }
+    }
+    if (!toSubmitRows.length && !toRemoveRows.length) {
+      alert("请至少填写一个规格的入库数量，或删除一个规格");
       return;
     }
-    for (const r of toSubmit) {
+    for (const r of toSubmitRows) {
       const price = Number(r.unitPrice);
       if (Number.isNaN(price) || price < 0) {
-        alert(`规格「${r.spec}」的入库单价无效`);
+        alert(`规格「${r.spec || "新规格"}」的入库单价无效`);
         return;
       }
     }
 
     setSaving(true);
     try {
-      for (const r of toSubmit) {
+      // 1. Archive removed variants
+      for (const r of toRemoveRows) {
+        if (r.variantId && onRemoveVariant) await onRemoveVariant(r.variantId);
+      }
+
+      // 2. Create new variants and record their real IDs
+      const newVariantIds = new Map<string, string>();
+      for (const r of toSubmitRows.filter((r) => r.isNew)) {
+        if (onAddVariant && selectedProduct) {
+          const created = await onAddVariant(selectedProduct.id, {
+            spec: r.spec.trim(),
+            price: Number(r.unitPrice) || 0,
+          });
+          newVariantIds.set(r.key, created.id);
+        }
+      }
+
+      // 3. Submit stock-in transactions
+      for (const r of toSubmitRows) {
+        const variantId = r.variantId ?? newVariantIds.get(r.key);
+        if (!variantId) continue;
         await onSubmit({
-          variantId: r.variantId,
+          variantId,
           storeId,
           quantityDelta: Number(r.qty),
           unitPrice: Number(r.unitPrice) || 0,
@@ -114,6 +169,7 @@ export default function StockInModal({
           performedAt: new Date(performedAt).toISOString(),
         });
       }
+
       onClose();
     } catch (e) {
       alert(e instanceof Error ? e.message : "入库失败");
@@ -121,6 +177,13 @@ export default function StockInModal({
       setSaving(false);
     }
   };
+
+  const submitLabel = (() => {
+    const parts: string[] = [];
+    if (toSubmitRows.length > 0) parts.push(`入库 ${toSubmitRows.length} 个规格`);
+    if (toRemoveRows.length > 0) parts.push(`删除 ${toRemoveRows.length} 个规格`);
+    return parts.length > 0 ? `确认（${parts.join("，")}）` : "确认入库";
+  })();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -160,73 +223,127 @@ export default function StockInModal({
             </select>
           </div>
 
-          {rows.length > 0 && (
-            <div>
-              <label className="text-sm text-slate-600 block mb-2">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm text-slate-600">
                 各规格入库数量
                 <span className="text-slate-400 font-normal ml-1">（留空表示不入库）</span>
               </label>
-              <div className="border border-slate-200 rounded-md overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 text-slate-500 text-xs">
-                      <th className="text-left px-3 py-2 font-medium">规格</th>
-                      <th className="text-right px-3 py-2 font-medium w-28">入库单价（元）</th>
-                      <th className="text-right px-3 py-2 font-medium w-24">入库数量</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {rows.map((row) => {
-                      const isPreselected = row.variantId === preselectedVariantId;
-                      return (
-                        <tr
-                          key={row.variantId}
-                          className={isPreselected ? "bg-blue-50/60" : "hover:bg-slate-50/50"}
-                        >
-                          <td className="px-3 py-2 text-slate-700">
-                            {row.spec}
-                            {isPreselected && (
-                              <span className="ml-1.5 text-xs text-blue-500">●</span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2">
+              {onAddVariant && (
+                <button
+                  onClick={addNewRow}
+                  type="button"
+                  className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+                >
+                  <Plus className="w-3 h-3" />
+                  添加规格
+                </button>
+              )}
+            </div>
+
+            <div className="border border-slate-200 rounded-md overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-slate-500 text-xs">
+                    <th className="text-left px-3 py-2 font-medium">规格</th>
+                    <th className="text-right px-3 py-2 font-medium w-28">入库单价（元）</th>
+                    <th className="text-right px-3 py-2 font-medium w-24">入库数量</th>
+                    {canEditVariants && <th className="w-8" />}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {visibleRows.map((row) => {
+                    const isPreselected = row.variantId === preselectedVariantId;
+                    return (
+                      <tr
+                        key={row.key}
+                        className={
+                          row.isNew
+                            ? "bg-emerald-50/50"
+                            : isPreselected
+                            ? "bg-blue-50/60"
+                            : "hover:bg-slate-50/50"
+                        }
+                      >
+                        <td className="px-3 py-2 text-slate-700">
+                          {row.isNew ? (
                             <input
-                              type="number"
-                              value={row.unitPrice}
-                              onChange={(e) => updateRow(row.variantId, "unitPrice", e.target.value)}
-                              min="0"
-                              step="0.01"
-                              className="w-full px-2 py-1 border border-slate-300 rounded text-sm text-right"
+                              type="text"
+                              value={row.spec}
+                              onChange={(e) => updateRow(row.key, { spec: e.target.value })}
+                              placeholder="规格名称"
+                              className="w-full px-2 py-1 border border-slate-300 rounded text-sm"
                             />
+                          ) : (
+                            <>
+                              {row.spec || "—"}
+                              {isPreselected && (
+                                <span className="ml-1.5 text-xs text-blue-500">●</span>
+                              )}
+                            </>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            value={row.unitPrice}
+                            onChange={(e) => updateRow(row.key, { unitPrice: e.target.value })}
+                            min="0"
+                            step="0.01"
+                            placeholder={row.isNew ? "售价" : undefined}
+                            className="w-full px-2 py-1 border border-slate-300 rounded text-sm text-right"
+                          />
+                        </td>
+                        <td className="px-3 py-2">
+                          <input
+                            type="number"
+                            value={row.qty}
+                            onChange={(e) => updateRow(row.key, { qty: e.target.value })}
+                            min="1"
+                            placeholder="—"
+                            className={`w-full px-2 py-1 border rounded text-sm text-right ${
+                              row.qty !== "" && Number(row.qty) > 0
+                                ? "border-blue-400 bg-blue-50"
+                                : "border-slate-300"
+                            }`}
+                          />
+                        </td>
+                        {canEditVariants && (
+                          <td className="px-2 py-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => removeRow(row.key, row.isNew)}
+                              className="text-slate-300 hover:text-red-500"
+                              title="删除规格"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
                           </td>
-                          <td className="px-3 py-2">
-                            <input
-                              type="number"
-                              value={row.qty}
-                              onChange={(e) => updateRow(row.variantId, "qty", e.target.value)}
-                              min="1"
-                              placeholder="—"
-                              className={`w-full px-2 py-1 border rounded text-sm text-right ${
-                                row.qty !== "" && Number(row.qty) > 0
-                                  ? "border-blue-400 bg-blue-50"
-                                  : "border-slate-300"
-                              }`}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              {toSubmit.length > 0 && (
-                <p className="mt-1.5 text-xs text-blue-600">
-                  将入库 {toSubmit.length} 个规格，合计{" "}
-                  {toSubmit.reduce((s, r) => s + Number(r.qty), 0)} 件
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              {visibleRows.length === 0 && (
+                <div className="text-center py-6 text-slate-400 text-sm">
+                  暂无规格，点击上方「添加规格」
+                </div>
+              )}
+            </div>
+
+            <div className="mt-1.5 space-y-0.5">
+              {toRemoveRows.length > 0 && (
+                <p className="text-xs text-red-500">将删除 {toRemoveRows.length} 个规格</p>
+              )}
+              {toSubmitRows.length > 0 && (
+                <p className="text-xs text-blue-600">
+                  将入库 {toSubmitRows.length} 个规格，合计{" "}
+                  {toSubmitRows.reduce((s, r) => s + Number(r.qty), 0)} 件
                 </p>
               )}
             </div>
-          )}
+          </div>
 
           <div>
             <label className="text-sm text-slate-600 block mb-1">入库时间</label>
@@ -258,14 +375,10 @@ export default function StockInModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={saving || toSubmit.length === 0}
+            disabled={saving || (toSubmitRows.length === 0 && toRemoveRows.length === 0)}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
-            {saving
-              ? "提交中..."
-              : toSubmit.length > 0
-              ? `确认入库（${toSubmit.length} 个规格）`
-              : "确认入库"}
+            {saving ? "提交中..." : submitLabel}
           </button>
         </div>
       </div>
