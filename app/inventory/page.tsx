@@ -117,24 +117,29 @@ export default function InventoryPage() {
   const [showRetailSale, setShowRetailSale] = useState(false);
   const [showStockSale, setShowStockSale] = useState(false);
   const [preselectedProduct, setPreselectedProduct] = useState<Product | null>(null);
+  const [preselectedVariantId, setPreselectedVariantId] = useState<string | undefined>();
 
-  const openStockIn = (product?: Product) => {
+  const openStockIn = (product?: Product, variantId?: string) => {
     setPreselectedProduct(product ?? null);
+    setPreselectedVariantId(variantId);
     setShowStockIn(true);
   };
 
-  const openAdjust = (product?: Product) => {
+  const openAdjust = (product?: Product, variantId?: string) => {
     setPreselectedProduct(product ?? null);
+    setPreselectedVariantId(variantId);
     setShowAdjust(true);
   };
 
-  const openRetailSale = (product?: Product) => {
+  const openRetailSale = (product?: Product, variantId?: string) => {
     setPreselectedProduct(product ?? null);
+    setPreselectedVariantId(variantId);
     setShowRetailSale(true);
   };
 
-  const openStockSale = (product?: Product) => {
+  const openStockSale = (product?: Product, variantId?: string) => {
     setPreselectedProduct(product ?? null);
+    setPreselectedVariantId(variantId);
     setShowStockSale(true);
   };
 
@@ -415,7 +420,9 @@ export default function InventoryPage() {
         isOpen={showStockIn}
         products={products}
         stores={activeStores}
-        onClose={() => setShowStockIn(false)}
+        preselectedProductId={preselectedProduct?.id}
+        preselectedVariantId={preselectedVariantId}
+        onClose={() => { setShowStockIn(false); setPreselectedVariantId(undefined); }}
         onSubmit={(data) =>
           handleTransaction({ ...data, type: "STOCK_IN" })
         }
@@ -426,7 +433,9 @@ export default function InventoryPage() {
         products={products}
         stores={activeStores}
         getQuantity={getQuantity}
-        onClose={() => setShowAdjust(false)}
+        preselectedProductId={preselectedProduct?.id}
+        preselectedVariantId={preselectedVariantId}
+        onClose={() => { setShowAdjust(false); setPreselectedVariantId(undefined); }}
         onSubmit={(data) => handleTransaction(data)}
       />
 
@@ -436,7 +445,9 @@ export default function InventoryPage() {
         products={products}
         stores={activeStores}
         getQuantity={getQuantity}
-        onClose={() => setShowRetailSale(false)}
+        preselectedProductId={preselectedProduct?.id}
+        preselectedVariantId={preselectedVariantId}
+        onClose={() => { setShowRetailSale(false); setPreselectedVariantId(undefined); }}
         onSubmit={(data) =>
           handleTransaction({ ...data, type: "SALE" })
         }
@@ -448,7 +459,9 @@ export default function InventoryPage() {
         products={products}
         stores={activeStores}
         getQuantity={getQuantity}
-        onClose={() => setShowStockSale(false)}
+        preselectedProductId={preselectedProduct?.id}
+        preselectedVariantId={preselectedVariantId}
+        onClose={() => { setShowStockSale(false); setPreselectedVariantId(undefined); }}
         onSubmit={(data) =>
           handleTransaction({ ...data, type: "SALE" })
         }

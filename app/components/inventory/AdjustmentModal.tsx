@@ -11,6 +11,8 @@ type AdjustmentModalProps = {
   products: Product[];
   stores: Store[];
   getQuantity: (variantId: string, storeId: string) => number;
+  preselectedProductId?: string;
+  preselectedVariantId?: string;
   onClose: () => void;
   onSubmit: (data: {
     type: "TRANSFER_OUT" | "RETURN" | "ADJUSTMENT";
@@ -29,6 +31,8 @@ export default function AdjustmentModal({
   products,
   stores,
   getQuantity,
+  preselectedProductId,
+  preselectedVariantId,
   onClose,
   onSubmit,
 }: AdjustmentModalProps) {
@@ -62,10 +66,14 @@ export default function AdjustmentModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    const firstProduct = activeProducts[0];
+    const initProductId = preselectedProductId ?? activeProducts[0]?.id ?? "";
+    const initProduct = activeProducts.find((p) => p.id === initProductId) ?? activeProducts[0];
+    const initVariantId =
+      preselectedVariantId ??
+      initProduct?.variants.filter((v) => !v.archived)[0]?.id ?? "";
     setSubtype("transfer");
-    setProductId(firstProduct?.id ?? "");
-    setVariantId(firstProduct?.variants.filter((v) => !v.archived)[0]?.id ?? "");
+    setProductId(initProductId);
+    setVariantId(initVariantId);
     setStoreId(stores[0]?.id ?? "");
     setToStoreId(stores[1]?.id ?? stores[0]?.id ?? "");
     setQuantity("1");
@@ -182,7 +190,8 @@ export default function AdjustmentModal({
             <select
               value={productId}
               onChange={(e) => setProductId(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+              disabled={!!preselectedProductId}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm disabled:bg-slate-50 disabled:text-slate-500"
             >
               <option value="" disabled>请选择产品</option>
               {activeProducts.map((p) => (
@@ -198,8 +207,8 @@ export default function AdjustmentModal({
             <select
               value={variantId}
               onChange={(e) => setVariantId(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-              disabled={!activeVariants.length}
+              disabled={!!preselectedVariantId || !activeVariants.length}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm disabled:bg-slate-50 disabled:text-slate-500"
             >
               <option value="" disabled>请选择规格</option>
               {activeVariants.map((v) => (

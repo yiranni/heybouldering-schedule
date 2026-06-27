@@ -11,6 +11,8 @@ type SaleModalProps = {
   products: Product[];
   stores: Store[];
   getQuantity: (variantId: string, storeId: string) => number;
+  preselectedProductId?: string;
+  preselectedVariantId?: string;
   onClose: () => void;
   onSubmit: (data: {
     variantId: string;
@@ -28,6 +30,8 @@ export default function SaleModal({
   products,
   stores,
   getQuantity,
+  preselectedProductId,
+  preselectedVariantId,
   onClose,
   onSubmit,
 }: SaleModalProps) {
@@ -51,11 +55,15 @@ export default function SaleModal({
 
   useEffect(() => {
     if (!isOpen) return;
-    const firstProduct = activeProducts[0];
-    setProductId(firstProduct?.id ?? "");
-    const firstVariant = firstProduct?.variants.filter((v) => !v.archived)[0];
-    setVariantId(firstVariant?.id ?? "");
-    setUnitPrice(firstVariant ? String(firstVariant.price) : "");
+    const initProductId = preselectedProductId ?? activeProducts[0]?.id ?? "";
+    const initProduct = activeProducts.find((p) => p.id === initProductId) ?? activeProducts[0];
+    const initVariantId =
+      preselectedVariantId ??
+      initProduct?.variants.filter((v) => !v.archived)[0]?.id ?? "";
+    const initVariant = initProduct?.variants.find((v) => v.id === initVariantId);
+    setProductId(initProductId);
+    setVariantId(initVariantId);
+    setUnitPrice(initVariant ? String(initVariant.price) : "");
     setStoreId(stores[0]?.id ?? "");
     setQuantity("1");
     setNote("");
@@ -117,7 +125,8 @@ export default function SaleModal({
             <select
               value={productId}
               onChange={(e) => setProductId(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+              disabled={!!preselectedProductId}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm disabled:bg-slate-50 disabled:text-slate-500"
             >
               <option value="" disabled>请选择产品</option>
               {activeProducts.map((p) => (
@@ -137,8 +146,8 @@ export default function SaleModal({
                 const v = activeVariants.find((v) => v.id === e.target.value);
                 if (v) setUnitPrice(String(v.price));
               }}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-              disabled={!activeVariants.length}
+              disabled={!!preselectedVariantId || !activeVariants.length}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm disabled:bg-slate-50 disabled:text-slate-500"
             >
               <option value="" disabled>请选择规格</option>
               {activeVariants.map((v) => (

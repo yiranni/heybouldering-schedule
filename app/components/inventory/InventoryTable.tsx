@@ -24,10 +24,10 @@ type InventoryTableProps = {
   stock: StockEntry[];
   stores: Store[];
   isManager: boolean;
-  onStockIn: (product: Product) => void;
-  onAdjust: (product: Product) => void;
-  onRetailSale: (product: Product) => void;
-  onStockSale?: (product: Product) => void;
+  onStockIn: (product: Product, variantId?: string) => void;
+  onAdjust: (product: Product, variantId?: string) => void;
+  onRetailSale: (product: Product, variantId?: string) => void;
+  onStockSale?: (product: Product, variantId?: string) => void;
   onEdit: (product: Product) => void;
   onArchive: (product: Product) => void;
 };
@@ -213,7 +213,51 @@ export default function InventoryTable({
                       <td className="px-4 py-2 text-right font-medium text-slate-700">
                         {getTotalStock(variant.id)}
                       </td>
-                      <td className="px-4 py-2"></td>
+                      <td className="px-4 py-2">
+                        <div
+                          className="flex items-center justify-end gap-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Tooltip label="售卖">
+                            <button
+                              onClick={() => onRetailSale(product, variant.id)}
+                              className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded"
+                            >
+                              <ShoppingCart className="w-3.5 h-3.5" />
+                            </button>
+                          </Tooltip>
+                          {isManager && onStockSale && (
+                            <Tooltip label="销货">
+                              <button
+                                onClick={() => onStockSale(product, variant.id)}
+                                className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded"
+                              >
+                                <Tag className="w-3.5 h-3.5" />
+                              </button>
+                            </Tooltip>
+                          )}
+                          {isManager && (
+                            <>
+                              <Tooltip label="入库">
+                                <button
+                                  onClick={() => onStockIn(product, variant.id)}
+                                  className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                >
+                                  <PackagePlus className="w-3.5 h-3.5" />
+                                </button>
+                              </Tooltip>
+                              <Tooltip label="调货">
+                                <button
+                                  onClick={() => onAdjust(product, variant.id)}
+                                  className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-50 rounded"
+                                >
+                                  <ArrowLeftRight className="w-3.5 h-3.5" />
+                                </button>
+                              </Tooltip>
+                            </>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
               </>
