@@ -13,7 +13,7 @@ import SalesAnalytics from "../components/SalesAnalytics";
 
 export default function SalesPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "ADMIN" || user?.role === "MANAGER";
+  const isAdmin = user?.role === "ADMIN";
 
   const { coaches, loading: coachesLoading, error: coachesError } = useCoaches();
   const {

@@ -12,7 +12,7 @@ export async function resolveSalesAccess(request: NextRequest): Promise<SalesAcc
   const session = getSessionFromRequest(request);
   if (!session) return null;
 
-  if (session.role === "ADMIN" || session.role === "MANAGER") {
+  if (session.role === "ADMIN") {
     return { session, coachId: null, isAdmin: true };
   }
 

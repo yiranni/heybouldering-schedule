@@ -180,7 +180,7 @@ export default function InventoryPage() {
             <div className="bg-emerald-500 p-2 rounded-lg">
               <Package className="w-6 h-6 text-white" />
             </div>
-            <TopNavMenu current="inventory" isAdmin={isManager} />
+            <TopNavMenu current="inventory" isAdmin={user?.role === "ADMIN"} />
           </div>
 
           <div className="flex items-center gap-2">
