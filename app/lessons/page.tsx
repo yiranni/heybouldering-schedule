@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { BookOpen, Calendar, Pencil, Plus, Settings, Trash2, X } from "lucide-react";
 import TopNavMenu from "../components/TopNavMenu";
+import LessonAnalytics from "../components/LessonAnalytics";
 import { useAuth } from "../components/AuthGuard";
 import { useCoaches } from "../hooks/useCoaches";
 import { useLessonRecords } from "../hooks/useLessonRecords";
@@ -230,6 +231,15 @@ export default function LessonsPage() {
               </div>
             </div>
           </div>
+
+          {isAdmin && (
+            <LessonAnalytics
+              records={lessonRecords}
+              coaches={coaches}
+              lessonTypes={lessonTypes}
+              coachId={filters.coachId}
+            />
+          )}
 
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
