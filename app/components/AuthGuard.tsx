@@ -220,13 +220,6 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   return (
     <AuthContext.Provider value={contextValue}>
       {children}
-      {/* Logout Button - 可选 */}
-      <button
-        onClick={handleLogout}
-        className="fixed bottom-4 right-4 bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-2 rounded-lg shadow-lg transition-all opacity-50 hover:opacity-100"
-      >
-        退出登录
-      </button>
     </AuthContext.Provider>
   );
 }

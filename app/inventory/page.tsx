@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Package, Plus, PackagePlus, ArrowLeftRight, ShoppingCart, Search, X } from "lucide-react";
+import { Package, Plus, Search, X } from "lucide-react";
 import { useAuth } from "../components/AuthGuard";
 import TopNavMenu from "../components/TopNavMenu";
+import UserInfo from "../components/UserInfo";
 import { useStores } from "../hooks/useStores";
 import { useInventoryProducts, type Product } from "../hooks/useInventoryProducts";
 import { useInventoryStock } from "../hooks/useInventoryStock";
@@ -184,48 +185,19 @@ export default function InventoryPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => openRetailSale()}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-md text-sm font-medium transition-all shadow-lg active:scale-95"
-            >
-              <ShoppingCart className="w-4 h-4" />
-              售卖
-            </button>
             {isManager && (
-              <>
-                <button
-                  onClick={() => openStockSale()}
-                  className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-3 py-2 rounded-md text-sm font-medium transition-all shadow-lg active:scale-95"
-                >
-                  <ShoppingCart className="w-4 h-4" />
-                  销货
-                </button>
-                <button
-                  onClick={() => openStockIn()}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-md text-sm font-medium transition-all shadow-lg active:scale-95"
-                >
-                  <PackagePlus className="w-4 h-4" />
-                  入库
-                </button>
-                <button
-                  onClick={() => openAdjust()}
-                  className="flex items-center gap-2 bg-orange-500 hover:bg-orange-400 text-white px-3 py-2 rounded-md text-sm font-medium transition-all shadow-lg active:scale-95"
-                >
-                  <ArrowLeftRight className="w-4 h-4" />
-                  调货
-                </button>
-                <button
-                  onClick={() => {
-                    setEditingProduct(null);
-                    setShowProductModal(true);
-                  }}
-                  className="flex items-center gap-2 bg-slate-600 hover:bg-slate-500 text-white px-3 py-2 rounded-md text-sm font-medium transition-all shadow-lg active:scale-95"
-                >
-                  <Plus className="w-4 h-4" />
-                  新增产品
-                </button>
-              </>
+              <button
+                onClick={() => {
+                  setEditingProduct(null);
+                  setShowProductModal(true);
+                }}
+                className="flex items-center gap-2 bg-slate-600 hover:bg-slate-500 text-white px-3 py-2 rounded-md text-sm font-medium transition-all shadow-lg active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                新增产品
+              </button>
             )}
+            <UserInfo />
           </div>
         </div>
       </header>

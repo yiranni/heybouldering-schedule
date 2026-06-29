@@ -3,6 +3,7 @@
 import { Calendar, List, Save, Settings, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import TopNavMenu from "../components/TopNavMenu";
+import UserInfo from "../components/UserInfo";
 import { useAuth } from "../components/AuthGuard";
 import { usePayroll } from "../hooks/usePayroll";
 import { useLessonTypes } from "../hooks/useLessonTypes";
@@ -253,11 +254,14 @@ export default function PayrollPage() {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
         <header className="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto flex items-center gap-3">
-            <div className="bg-emerald-500 p-2 rounded-lg">
-              <Calendar className="w-6 h-6 text-white" />
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-emerald-500 p-2 rounded-lg">
+                <Calendar className="w-6 h-6 text-white" />
+              </div>
+              <TopNavMenu current="schedule" isAdmin={false} />
             </div>
-            <TopNavMenu current="schedule" isAdmin={false} />
+            <UserInfo />
           </div>
         </header>
         <main className="max-w-4xl mx-auto p-6">
@@ -328,6 +332,7 @@ export default function PayrollPage() {
               <Save className="w-4 h-4" />
               {saving ? "保存中..." : "保存"}
             </button>
+            <UserInfo />
           </div>
         </div>
       </header>

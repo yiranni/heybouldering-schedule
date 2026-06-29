@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { BookOpen, Calendar, Pencil, Plus, Settings, Trash2, X } from "lucide-react";
 import TopNavMenu from "../components/TopNavMenu";
 import LessonAnalytics from "../components/LessonAnalytics";
+import UserInfo from "../components/UserInfo";
 import { useAuth } from "../components/AuthGuard";
 import { useCoaches } from "../hooks/useCoaches";
 import { useLessonRecords } from "../hooks/useLessonRecords";
@@ -189,6 +190,7 @@ export default function LessonsPage() {
               <Plus className="w-4 h-4" />
               新增课程记录
             </button>
+            <UserInfo />
           </div>
         </div>
       </header>

@@ -33,6 +33,7 @@ import ExportImageModal from "./components/ExportImageModal";
 import DateRangeModal from "./components/DateRangeModal";
 import { useAuth } from "./components/AuthGuard";
 import TopNavMenu from "./components/TopNavMenu";
+import UserInfo from "./components/UserInfo";
 
 export default function RockGymScheduler() {
   const { user } = useAuth();
@@ -656,6 +657,7 @@ export default function RockGymScheduler() {
                 </div>
               )}
             </div>
+            <UserInfo />
           </div>
         </div>
       </header>

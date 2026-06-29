@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Calendar } from "lucide-react";
 import { useAuth } from "../components/AuthGuard";
 import TopNavMenu from "../components/TopNavMenu";
+import UserInfo from "../components/UserInfo";
 import { useCoaches } from "../hooks/useCoaches";
 import { useSalesRecords } from "../hooks/useSalesRecords";
 import { useCommissionRules } from "../hooks/useCommissionRules";
@@ -51,7 +52,7 @@ export default function SalesPage() {
             </div>
             <TopNavMenu current="sales" isAdmin={isAdmin} />
           </div>
-
+          <UserInfo />
         </div>
       </header>
 
