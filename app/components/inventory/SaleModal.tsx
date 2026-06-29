@@ -75,11 +75,12 @@ export default function SaleModal({
   }, [isOpen]);
 
   useEffect(() => {
+    if (preselectedVariantId) return;
     const first = activeVariants[0];
     setVariantId(first?.id ?? "");
     if (first) setUnitPrice(String(first.price));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId]);
+  }, [productId, preselectedVariantId]);
 
   if (!isOpen) return null;
 
@@ -139,21 +140,27 @@ export default function SaleModal({
 
           <div>
             <label className="text-sm text-slate-600 block mb-1">规格</label>
-            <select
-              value={variantId}
-              onChange={(e) => {
-                setVariantId(e.target.value);
-                const v = activeVariants.find((v) => v.id === e.target.value);
-                if (v) setUnitPrice(String(v.price));
-              }}
-              disabled={!!preselectedVariantId || !activeVariants.length}
-              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm disabled:bg-slate-50 disabled:text-slate-500"
-            >
-              <option value="" disabled>请选择规格</option>
-              {activeVariants.map((v) => (
-                <option key={v.id} value={v.id}>{v.spec}</option>
-              ))}
-            </select>
+            {preselectedVariantId ? (
+              <div className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm bg-slate-50 text-slate-700">
+                {activeVariants.find((v) => v.id === variantId)?.spec || "—"}
+              </div>
+            ) : (
+              <select
+                value={variantId}
+                onChange={(e) => {
+                  setVariantId(e.target.value);
+                  const v = activeVariants.find((v) => v.id === e.target.value);
+                  if (v) setUnitPrice(String(v.price));
+                }}
+                disabled={!activeVariants.length}
+                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm disabled:bg-slate-50 disabled:text-slate-500"
+              >
+                <option value="" disabled>请选择规格</option>
+                {activeVariants.map((v) => (
+                  <option key={v.id} value={v.id}>{v.spec}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>

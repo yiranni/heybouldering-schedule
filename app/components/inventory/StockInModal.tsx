@@ -70,9 +70,28 @@ export default function StockInModal({
     }));
 
   useEffect(() => {
+    if (preselectedVariantId) {
+      const variant = activeVariants.find((v) => v.id === preselectedVariantId);
+      setRows(
+        variant
+          ? [
+              {
+                key: variant.id,
+                variantId: variant.id,
+                spec: variant.spec,
+                qty: "",
+                unitPrice: String(variant.price),
+                isNew: false,
+                pendingRemove: false,
+              },
+            ]
+          : []
+      );
+      return;
+    }
     setRows(buildRows(activeVariants));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId]);
+  }, [productId, preselectedVariantId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -229,7 +248,7 @@ export default function StockInModal({
                 各规格入库数量
                 <span className="text-slate-400 font-normal ml-1">（留空表示不入库）</span>
               </label>
-              {onAddVariant && (
+              {onAddVariant && !preselectedVariantId && (
                 <button
                   onClick={addNewRow}
                   type="button"
@@ -248,7 +267,7 @@ export default function StockInModal({
                     <th className="text-left px-3 py-2 font-medium">规格</th>
                     <th className="text-right px-3 py-2 font-medium w-28">入库单价（元）</th>
                     <th className="text-right px-3 py-2 font-medium w-24">入库数量</th>
-                    {canEditVariants && <th className="w-8" />}
+                    {canEditVariants && !preselectedVariantId && <th className="w-8" />}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -308,7 +327,7 @@ export default function StockInModal({
                             }`}
                           />
                         </td>
-                        {canEditVariants && (
+                        {canEditVariants && !preselectedVariantId && (
                           <td className="px-2 py-2 text-center">
                             <button
                               type="button"

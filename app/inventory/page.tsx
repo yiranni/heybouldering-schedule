@@ -269,10 +269,10 @@ export default function InventoryPage() {
                   stock={stock}
                   stores={activeStores}
                   isManager={isManager}
-                  onStockIn={(p) => openStockIn(p)}
-                  onAdjust={(p) => openAdjust(p)}
-                  onRetailSale={(p) => openRetailSale(p)}
-                  onStockSale={isManager ? (p) => openStockSale(p) : undefined}
+                  onStockIn={(p, variantId) => openStockIn(p, variantId)}
+                  onAdjust={(p, variantId) => openAdjust(p, variantId)}
+                  onRetailSale={(p, variantId) => openRetailSale(p, variantId)}
+                  onStockSale={isManager ? (p, variantId) => openStockSale(p, variantId) : undefined}
                   onEdit={(p) => {
                     setEditingProduct(p);
                     setShowProductModal(true);
@@ -395,7 +395,11 @@ export default function InventoryPage() {
         stores={activeStores}
         preselectedProductId={preselectedProduct?.id}
         preselectedVariantId={preselectedVariantId}
-        onClose={() => { setShowStockIn(false); setPreselectedVariantId(undefined); }}
+        onClose={() => {
+          setShowStockIn(false);
+          setPreselectedProduct(null);
+          setPreselectedVariantId(undefined);
+        }}
         onAddVariant={addVariant}
         onRemoveVariant={archiveVariant}
         onSubmit={(data) =>
@@ -410,7 +414,11 @@ export default function InventoryPage() {
         getQuantity={getQuantity}
         preselectedProductId={preselectedProduct?.id}
         preselectedVariantId={preselectedVariantId}
-        onClose={() => { setShowAdjust(false); setPreselectedVariantId(undefined); }}
+        onClose={() => {
+          setShowAdjust(false);
+          setPreselectedProduct(null);
+          setPreselectedVariantId(undefined);
+        }}
         onSubmit={(data) => handleTransaction(data)}
       />
 
@@ -422,7 +430,11 @@ export default function InventoryPage() {
         getQuantity={getQuantity}
         preselectedProductId={preselectedProduct?.id}
         preselectedVariantId={preselectedVariantId}
-        onClose={() => { setShowRetailSale(false); setPreselectedVariantId(undefined); }}
+        onClose={() => {
+          setShowRetailSale(false);
+          setPreselectedProduct(null);
+          setPreselectedVariantId(undefined);
+        }}
         onSubmit={(data) =>
           handleTransaction({ ...data, type: "SALE" })
         }
@@ -436,7 +448,11 @@ export default function InventoryPage() {
         getQuantity={getQuantity}
         preselectedProductId={preselectedProduct?.id}
         preselectedVariantId={preselectedVariantId}
-        onClose={() => { setShowStockSale(false); setPreselectedVariantId(undefined); }}
+        onClose={() => {
+          setShowStockSale(false);
+          setPreselectedProduct(null);
+          setPreselectedVariantId(undefined);
+        }}
         onSubmit={(data) =>
           handleTransaction({ ...data, type: "WRITEOFF" })
         }
