@@ -7,6 +7,7 @@ import TopNavMenu from "../components/TopNavMenu";
 import UserInfo from "../components/UserInfo";
 import { useStores } from "../hooks/useStores";
 import { useInventoryProducts, type Product } from "../hooks/useInventoryProducts";
+import { useProductCategories } from "../hooks/useProductCategories";
 import { useInventoryStock } from "../hooks/useInventoryStock";
 import { useInventoryTransactions } from "../hooks/useInventoryTransactions";
 import InventoryTable from "../components/inventory/InventoryTable";
@@ -35,6 +36,7 @@ export default function InventoryPage() {
     updateVariant,
     archiveVariant,
   } = useInventoryProducts();
+  const { categories, createCategory } = useProductCategories();
 
   const { stock, reload: reloadStock, getQuantity } = useInventoryStock();
   const {
@@ -147,12 +149,17 @@ export default function InventoryPage() {
   const handleSaveProduct = async (data: {
     brand: string;
     name: string;
+    categoryId?: string | null;
     variants: { spec: string; price: number }[];
     updatedVariants?: { id: string; spec: string; price: number }[];
     archivedVariantIds?: string[];
   }) => {
     if (editingProduct) {
-      await updateProduct(editingProduct.id, { brand: data.brand, name: data.name });
+      await updateProduct(editingProduct.id, {
+        brand: data.brand,
+        name: data.name,
+        categoryId: data.categoryId,
+      });
       for (const v of data.updatedVariants ?? []) {
         await updateVariant(v.id, { spec: v.spec, price: v.price });
       }
@@ -382,6 +389,9 @@ export default function InventoryPage() {
       <ProductModal
         isOpen={showProductModal}
         product={editingProduct}
+        categories={categories}
+        canManageCategories={isManager}
+        onCreateCategory={isManager ? createCategory : undefined}
         onClose={() => {
           setShowProductModal(false);
           setEditingProduct(null);

@@ -52,7 +52,7 @@ export default function SalesAnalytics({
     const byCategory = new Map<string, number>();
 
     for (const record of records) {
-      const rawCategoryName = record.salesCategory?.name?.trim() || '';
+      const rawCategoryName = record.productCategory?.name?.trim() || '';
       const categoryName = rawCategoryName || '其他';
       byCategory.set(
         categoryName,

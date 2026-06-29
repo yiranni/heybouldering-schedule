@@ -1,17 +1,17 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { SalesRecord, Coach, SalesCategory } from '../types';
+import { SalesRecord, Coach, ProductCategory } from '../types';
 
 type SalesRecordModalProps = {
   isOpen: boolean;
   canSelectCoach: boolean;
   coaches: Coach[];
-  categories: SalesCategory[];
+  categories: ProductCategory[];
   defaultCoachId?: string;
   onClose: () => void;
   onCreate: (
-    payload: Omit<SalesRecord, 'id' | 'coach' | 'salesCategory'>
+    payload: Omit<SalesRecord, 'id' | 'coach' | 'productCategory'>
   ) => Promise<void>;
 };
 
@@ -25,7 +25,7 @@ export default function SalesRecordModal({
   onCreate,
 }: SalesRecordModalProps) {
   const [coachId, setCoachId] = useState('');
-  const [salesCategoryId, setSalesCategoryId] = useState('');
+  const [productCategoryId, setProductCategoryId] = useState('');
   const [productName, setProductName] = useState('');
   const [amount, setAmount] = useState('');
   const [soldAt, setSoldAt] = useState('');
@@ -35,7 +35,7 @@ export default function SalesRecordModal({
   useEffect(() => {
     if (!isOpen) return;
     setCoachId(defaultCoachId || coaches[0]?.id || '');
-    setSalesCategoryId(categories[0]?.id || '');
+    setProductCategoryId(categories[0]?.id || '');
     setProductName('');
     setAmount('');
     setNote('');
@@ -50,7 +50,7 @@ export default function SalesRecordModal({
 
   const handleSubmit = async () => {
     const numericAmount = Number(amount);
-    if (!salesCategoryId || !productName.trim() || Number.isNaN(numericAmount) || numericAmount <= 0 || !soldAt) {
+    if (!productCategoryId || !productName.trim() || Number.isNaN(numericAmount) || numericAmount <= 0 || !soldAt) {
       alert('请填写完整必填信息');
       return;
     }
@@ -59,7 +59,7 @@ export default function SalesRecordModal({
     try {
       await onCreate({
         coachId,
-        salesCategoryId,
+        productCategoryId,
         productName: productName.trim(),
         amount: numericAmount,
         soldAt: new Date(soldAt).toISOString(),
@@ -110,14 +110,14 @@ export default function SalesRecordModal({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="text-sm text-slate-600 block mb-1">销售类别</label>
+              <label className="text-sm text-slate-600 block mb-1">种类</label>
               <select
-                value={salesCategoryId}
-                onChange={(e) => setSalesCategoryId(e.target.value)}
+                value={productCategoryId}
+                onChange={(e) => setProductCategoryId(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md"
               >
                 <option value="" disabled>
-                  请选择类别
+                  请选择种类
                 </option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>

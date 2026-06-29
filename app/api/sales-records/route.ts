@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
             avatar: true,
           },
         },
-        salesCategory: {
+        productCategory: {
           select: {
             id: true,
             name: true,
@@ -70,15 +70,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const salesCategoryId = String(body?.salesCategoryId || "").trim();
+    const productCategoryId = String(body?.productCategoryId || "").trim();
     const productName = String(body?.productName || "").trim();
     const soldAt = String(body?.soldAt || "");
     const amount = Number(body?.amount);
     const note = body?.note ? String(body.note) : null;
 
-    if (!salesCategoryId || !productName || !soldAt || Number.isNaN(amount)) {
+    if (!productCategoryId || !productName || !soldAt || Number.isNaN(amount)) {
       return NextResponse.json(
-        { error: "salesCategoryId/productName/soldAt/amount 为必填字段" },
+        { error: "productCategoryId/productName/soldAt/amount 为必填字段" },
         { status: 400 }
       );
     }
@@ -94,18 +94,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "coachId 无效" }, { status: 400 });
     }
 
-    const categoryExists = await prisma.salesCategory.findUnique({
-      where: { id: salesCategoryId },
+    const categoryExists = await prisma.productCategory.findUnique({
+      where: { id: productCategoryId },
       select: { id: true },
     });
     if (!categoryExists) {
-      return NextResponse.json({ error: "salesCategoryId 无效" }, { status: 400 });
+      return NextResponse.json({ error: "productCategoryId 无效" }, { status: 400 });
     }
 
     const record = await prisma.salesRecord.create({
       data: {
         coachId: createCoachId,
-        salesCategoryId,
+        productCategoryId,
         productName,
         amount,
         soldAt: new Date(soldAt),
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
             avatar: true,
           },
         },
-        salesCategory: {
+        productCategory: {
           select: {
             id: true,
             name: true,

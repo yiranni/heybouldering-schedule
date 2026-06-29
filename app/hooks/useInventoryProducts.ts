@@ -16,6 +16,8 @@ export type Product = {
   id: string;
   brand: string;
   name: string;
+  categoryId?: string | null;
+  category?: { id: string; name: string } | null;
   archived: boolean;
   variants: ProductVariant[];
   createdAt: string;
@@ -46,7 +48,12 @@ export function useInventoryProducts(includeArchived = false) {
   useEffect(() => { load(); }, [load]);
 
   const createProduct = useCallback(
-    async (data: { brand: string; name: string; variants: { spec: string; price: number }[] }) => {
+    async (data: {
+      brand: string;
+      name: string;
+      categoryId?: string | null;
+      variants: { spec: string; price: number }[];
+    }) => {
       const res = await fetch("/api/inventory/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -61,7 +68,7 @@ export function useInventoryProducts(includeArchived = false) {
   );
 
   const updateProduct = useCallback(
-    async (id: string, data: { brand?: string; name?: string; archived?: boolean }) => {
+    async (id: string, data: { brand?: string; name?: string; categoryId?: string | null; archived?: boolean }) => {
       const res = await fetch(`/api/inventory/products/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

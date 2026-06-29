@@ -106,7 +106,7 @@ export default function SalesRecordTable({
                       {new Date(record.soldAt).toLocaleString('zh-CN')}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700">{record.coach?.name || '-'}</td>
-                    <td className="px-4 py-3 text-sm text-slate-700">{record.salesCategory?.name || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">{record.productCategory?.name || '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{record.productName}</td>
                     <td className="px-4 py-3 text-sm text-right font-medium text-slate-800">
                       ¥{record.amount.toFixed(2)}

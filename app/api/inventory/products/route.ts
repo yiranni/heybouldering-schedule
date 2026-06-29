@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   const products = await prisma.product.findMany({
     where: includeArchived ? undefined : { archived: false },
     include: {
+      category: { select: { id: true, name: true } },
       variants: {
         where: includeArchived ? undefined : { archived: false },
         orderBy: { createdAt: "asc" },
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const brand = String(body?.brand || "").trim();
   const name = String(body?.name || "").trim();
+  const categoryId = body?.categoryId ? String(body.categoryId).trim() : null;
   const variants: Array<{ spec: string; price: number }> = Array.isArray(body?.variants)
     ? body.variants
     : [];
@@ -39,10 +41,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "brand 和 name 为必填字段" }, { status: 400 });
   }
 
+  if (categoryId) {
+    const category = await prisma.productCategory.findUnique({
+      where: { id: categoryId },
+      select: { id: true },
+    });
+    if (!category) {
+      return NextResponse.json({ error: "categoryId 无效" }, { status: 400 });
+    }
+  }
+
   const product = await prisma.product.create({
     data: {
       brand,
       name,
+      categoryId,
       variants: {
         create: variants.map((v) => ({
           spec: String(v.spec || "").trim(),
@@ -51,6 +64,7 @@ export async function POST(request: NextRequest) {
       },
     },
     include: {
+      category: { select: { id: true, name: true } },
       variants: { orderBy: { createdAt: "asc" } },
     },
   });

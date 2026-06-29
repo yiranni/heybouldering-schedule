@@ -143,33 +143,34 @@ model LessonRecord {
 
 // 销售记录
 model SalesRecord {
-  id                     String         @id @default(cuid())
+  id                     String           @id @default(cuid())
   coachId                String?
-  salesCategoryId        String?
+  productCategoryId      String?
   productName            String
   amount                 Float
   soldAt                 DateTime
   note                   String?
-  inventoryTransactionId String?        @unique
-  createdAt              DateTime       @default(now())
-  updatedAt              DateTime       @updatedAt
-  coach                  Coach?         @relation(fields: [coachId], references: [id], onDelete: SetNull)
-  salesCategory          SalesCategory? @relation(fields: [salesCategoryId], references: [id], onDelete: SetNull)
+  inventoryTransactionId String?          @unique
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+  coach                  Coach?           @relation(fields: [coachId], references: [id], onDelete: SetNull)
+  productCategory        ProductCategory? @relation(fields: [productCategoryId], references: [id], onDelete: SetNull)
 
   @@map("sales_records")
   @@index([coachId])
-  @@index([salesCategoryId])
+  @@index([productCategoryId])
   @@index([soldAt])
 }
 
-model SalesCategory {
-  id          String       @id @default(cuid())
-  name        String       @unique
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+model ProductCategory {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  products     Product[]
   salesRecords SalesRecord[]
 
-  @@map("sales_categories")
+  @@map("products_categories")
 }
 
 // 提成规则：总额 >= minAmount 时，按 commissionRate 抽成
@@ -215,15 +216,18 @@ model PayrollSettings {
 
 // 零售产品
 model Product {
-  id        String           @id @default(cuid())
-  brand     String
-  name      String
-  archived  Boolean          @default(false)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  variants  ProductVariant[]
+  id         String           @id @default(cuid())
+  brand      String
+  name       String
+  categoryId String?
+  archived   Boolean          @default(false)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  category   ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  variants   ProductVariant[]
 
   @@map("products")
+  @@index([categoryId])
 }
 
 // 产品规格（e.g. 鞋码 39、镁粉大包）

@@ -27,7 +27,7 @@ type SalesDetailItem = {
   productName: string;
   amount: number;
   note?: string | null;
-  salesCategory?: { id: string; name: string } | null;
+  productCategory?: { id: string; name: string } | null;
 };
 
 type LessonFeeConfigApiItem = LessonFeeConfigDraft & {
@@ -501,7 +501,7 @@ export default function PayrollPage() {
                             <td className="px-3 py-2 text-slate-600">
                               {new Date(item.soldAt).toLocaleString("zh-CN")}
                             </td>
-                            <td className="px-3 py-2 text-slate-600">{item.salesCategory?.name || "其他"}</td>
+                            <td className="px-3 py-2 text-slate-600">{item.productCategory?.name || "其他"}</td>
                             <td className="px-3 py-2 text-slate-800">{item.productName}</td>
                             <td className="px-3 py-2 text-right text-slate-700">
                               {formatCurrency(item.amount)}

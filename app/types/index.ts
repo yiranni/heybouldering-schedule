@@ -122,7 +122,7 @@ export type LessonRecordFilters = {
 export type SalesRecord = {
   id: string;
   coachId: string;
-  salesCategoryId?: string | null;
+  productCategoryId?: string | null;
   productName: string;
   amount: number;
   soldAt: string; // ISO datetime
@@ -133,7 +133,7 @@ export type SalesRecord = {
     color: string;
     avatar: string;
   };
-  salesCategory?: {
+  productCategory?: {
     id: string;
     name: string;
   } | null;
@@ -145,7 +145,7 @@ export type SalesRecordFilters = {
   coachId?: string;
 };
 
-export type SalesCategory = {
+export type ProductCategory = {
   id: string;
   name: string;
 };

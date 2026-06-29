@@ -3,16 +3,23 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import type { Product, ProductVariant } from "../../hooks/useInventoryProducts";
+import type { ProductCategory } from "../../types";
 
 type VariantRow = { id?: string; spec: string; price: string };
+
+const NEW_CATEGORY_VALUE = "__new__";
 
 type ProductModalProps = {
   isOpen: boolean;
   product?: Product | null;
+  categories: ProductCategory[];
+  canManageCategories?: boolean;
+  onCreateCategory?: (name: string) => Promise<ProductCategory>;
   onClose: () => void;
   onSave: (data: {
     brand: string;
     name: string;
+    categoryId?: string | null;
     variants: { spec: string; price: number }[];
     updatedVariants?: { id: string; spec: string; price: number }[];
     archivedVariantIds?: string[];
@@ -23,11 +30,25 @@ function variantToRow(v: ProductVariant): VariantRow {
   return { id: v.id, spec: v.spec, price: String(v.price) };
 }
 
-export default function ProductModal({ isOpen, product, onClose, onSave }: ProductModalProps) {
+export default function ProductModal({
+  isOpen,
+  product,
+  categories,
+  canManageCategories = false,
+  onCreateCategory,
+  onClose,
+  onSave,
+}: ProductModalProps) {
   const [brand, setBrand] = useState("");
   const [name, setName] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
   const [hasSpecs, setHasSpecs] = useState(false);
-  const [variants, setVariants] = useState<VariantRow[]>([{ spec: "", price: "" }]);
+  const [variants, setVariants] = useState<VariantRow[]>([
+    { spec: "", price: "" },
+  ]);
   const [bulkPrice, setBulkPrice] = useState("");
   const [archivedIds, setArchivedIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -36,25 +57,37 @@ export default function ProductModal({ isOpen, product, onClose, onSave }: Produ
     if (!isOpen) return;
     setBrand(product?.brand ?? "");
     setName(product?.name ?? "");
+    setCategoryId(product?.categoryId ?? categories[0]?.id ?? "");
+    setShowNewCategory(false);
+    setNewCategoryName("");
     setArchivedIds([]);
     setBulkPrice("");
 
     if (product) {
-      const rows = product.variants.length ? product.variants.map(variantToRow) : [{ spec: "", price: "" }];
+      const rows = product.variants.length
+        ? product.variants.map(variantToRow)
+        : [{ spec: "", price: "" }];
       setVariants(rows);
       const activeVariants = product.variants.filter((v) => !v.archived);
-      const isSingleNoSpec = activeVariants.length === 1 && !activeVariants[0].spec.trim();
+      const isSingleNoSpec =
+        activeVariants.length === 1 && !activeVariants[0].spec.trim();
       setHasSpecs(!isSingleNoSpec && activeVariants.length > 0);
     } else {
       setVariants([{ spec: "", price: "" }]);
       setHasSpecs(false);
     }
-  }, [isOpen, product]);
+  }, [isOpen, product, categories]);
 
   if (!isOpen) return null;
 
-  const setVariantField = (idx: number, field: keyof VariantRow, value: string) => {
-    setVariants((prev) => prev.map((v, i) => (i === idx ? { ...v, [field]: value } : v)));
+  const setVariantField = (
+    idx: number,
+    field: keyof VariantRow,
+    value: string,
+  ) => {
+    setVariants((prev) =>
+      prev.map((v, i) => (i === idx ? { ...v, [field]: value } : v)),
+    );
   };
 
   const addVariant = () => {
@@ -80,9 +113,44 @@ export default function ProductModal({ isOpen, product, onClose, onSave }: Produ
     setVariants((prev) => prev.map((v) => ({ ...v, price: bulkPrice })));
   };
 
+  const handleCategoryChange = (value: string) => {
+    if (value === NEW_CATEGORY_VALUE) {
+      setShowNewCategory(true);
+      setCategoryId("");
+      return;
+    }
+    setShowNewCategory(false);
+    setNewCategoryName("");
+    setCategoryId(value);
+  };
+
+  const handleCreateCategory = async () => {
+    if (!onCreateCategory) return;
+    const trimmed = newCategoryName.trim();
+    if (!trimmed) {
+      alert("请输入种类名称");
+      return;
+    }
+    setCreatingCategory(true);
+    try {
+      const created = await onCreateCategory(trimmed);
+      setCategoryId(created.id);
+      setShowNewCategory(false);
+      setNewCategoryName("");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "新增种类失败");
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!brand.trim() || !name.trim()) {
       alert("品牌和产品名称为必填");
+      return;
+    }
+    if (!categoryId) {
+      alert("请选择产品种类");
       return;
     }
 
@@ -104,11 +172,16 @@ export default function ProductModal({ isOpen, product, onClose, onSave }: Produ
         .map((v) => ({ spec: v.spec.trim(), price: Number(v.price) || 0 }));
       const updatedVariants = validVariants
         .filter((v) => !!v.id)
-        .map((v) => ({ id: v.id!, spec: v.spec.trim(), price: Number(v.price) || 0 }));
+        .map((v) => ({
+          id: v.id!,
+          spec: v.spec.trim(),
+          price: Number(v.price) || 0,
+        }));
 
       await onSave({
         brand: brand.trim(),
         name: name.trim(),
+        categoryId,
         variants: newVariants,
         updatedVariants,
         archivedVariantIds: archivedIds,
@@ -131,6 +204,45 @@ export default function ProductModal({ isOpen, product, onClose, onSave }: Produ
         </div>
 
         <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
+          <div>
+            <label className="text-sm text-slate-600 block mb-1">种类</label>
+            <select
+              value={showNewCategory ? NEW_CATEGORY_VALUE : categoryId}
+              onChange={(e) => handleCategoryChange(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+            >
+              <option value="" disabled>
+                请选择种类
+              </option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+              {canManageCategories && (
+                <option value={NEW_CATEGORY_VALUE}>+ 新增种类...</option>
+              )}
+            </select>
+            {canManageCategories && showNewCategory && (
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  placeholder="输入新种类名称"
+                  className="flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={handleCreateCategory}
+                  disabled={creatingCategory}
+                  className="px-3 py-2 bg-emerald-600 text-white rounded-md text-sm hover:bg-emerald-500 disabled:opacity-50 whitespace-nowrap"
+                >
+                  {creatingCategory ? "添加中..." : "添加"}
+                </button>
+              </div>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-sm text-slate-600 block mb-1">品牌</label>
@@ -143,7 +255,9 @@ export default function ProductModal({ isOpen, product, onClose, onSave }: Produ
               />
             </div>
             <div>
-              <label className="text-sm text-slate-600 block mb-1">产品名称</label>
+              <label className="text-sm text-slate-600 block mb-1">
+                产品名称
+              </label>
               <input
                 type="text"
                 value={name}
@@ -156,7 +270,9 @@ export default function ProductModal({ isOpen, product, onClose, onSave }: Produ
 
           {!hasSpecs ? (
             <div>
-              <label className="text-sm text-slate-600 block mb-1">售价（元）</label>
+              <label className="text-sm text-slate-600 block mb-1">
+                售价（元）
+              </label>
               <input
                 type="number"
                 value={variants[0]?.price ?? ""}
@@ -170,7 +286,9 @@ export default function ProductModal({ isOpen, product, onClose, onSave }: Produ
           ) : (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-slate-700">规格列表</label>
+                <label className="text-sm font-medium text-slate-700">
+                  规格列表
+                </label>
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-500">批量设价：</span>
                   <input
@@ -198,14 +316,18 @@ export default function ProductModal({ isOpen, product, onClose, onSave }: Produ
                     <input
                       type="text"
                       value={v.spec}
-                      onChange={(e) => setVariantField(idx, "spec", e.target.value)}
+                      onChange={(e) =>
+                        setVariantField(idx, "spec", e.target.value)
+                      }
                       placeholder="规格名称（如 39码 / 大包）"
                       className="flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm"
                     />
                     <input
                       type="number"
                       value={v.price}
-                      onChange={(e) => setVariantField(idx, "price", e.target.value)}
+                      onChange={(e) =>
+                        setVariantField(idx, "price", e.target.value)
+                      }
                       placeholder="单价（元）"
                       min="0"
                       step="0.01"

@@ -25,26 +25,26 @@ export async function PUT(
     const body = await request.json();
     const updateData: {
       coachId?: string;
-      salesCategoryId?: string | null;
+      productCategoryId?: string | null;
       productName?: string;
       amount?: number;
       soldAt?: Date;
       note?: string | null;
     } = {};
 
-    if (body?.salesCategoryId !== undefined) {
-      const salesCategoryId = String(body.salesCategoryId).trim();
-      if (!salesCategoryId) {
-        return NextResponse.json({ error: "salesCategoryId 不能为空" }, { status: 400 });
+    if (body?.productCategoryId !== undefined) {
+      const productCategoryId = String(body.productCategoryId).trim();
+      if (!productCategoryId) {
+        return NextResponse.json({ error: "productCategoryId 不能为空" }, { status: 400 });
       }
-      const categoryExists = await prisma.salesCategory.findUnique({
-        where: { id: salesCategoryId },
+      const categoryExists = await prisma.productCategory.findUnique({
+        where: { id: productCategoryId },
         select: { id: true },
       });
       if (!categoryExists) {
-        return NextResponse.json({ error: "salesCategoryId 无效" }, { status: 400 });
+        return NextResponse.json({ error: "productCategoryId 无效" }, { status: 400 });
       }
-      updateData.salesCategoryId = salesCategoryId;
+      updateData.productCategoryId = productCategoryId;
     }
     if (body?.productName !== undefined) updateData.productName = String(body.productName).trim();
     if (body?.soldAt !== undefined) updateData.soldAt = new Date(String(body.soldAt));
@@ -73,7 +73,7 @@ export async function PUT(
             avatar: true,
           },
         },
-        salesCategory: {
+        productCategory: {
           select: {
             id: true,
             name: true,
