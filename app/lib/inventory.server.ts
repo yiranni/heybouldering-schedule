@@ -130,7 +130,7 @@ export async function findCoachIdByUserId(userId: string): Promise<string | null
   const rows = await prisma.$queryRaw<Array<{ id: string }>>`
     SELECT id
     FROM coaches
-    WHERE user_id = ${userId} AND archived = false
+    WHERE "userId" = ${userId} AND archived = false
     LIMIT 1
   `;
   return rows[0]?.id ?? null;
