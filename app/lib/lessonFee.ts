@@ -177,6 +177,25 @@ export type LessonFeeDetailsResult = {
   items: LessonFeeRecordDetail[];
 };
 
+export function summarizeLessonSessionsByType(
+  items: LessonFeeRecordDetail[]
+): Array<{ lessonTypeName: string; sessionCount: number; studentCount: number }> {
+  const summary = new Map<string, { sessionCount: number; studentCount: number }>();
+  for (const item of items) {
+    const current = summary.get(item.lessonTypeName) ?? { sessionCount: 0, studentCount: 0 };
+    current.sessionCount += 1;
+    current.studentCount += item.studentCount;
+    summary.set(item.lessonTypeName, current);
+  }
+  return [...summary.entries()]
+    .map(([lessonTypeName, { sessionCount, studentCount }]) => ({
+      lessonTypeName,
+      sessionCount,
+      studentCount,
+    }))
+    .sort((a, b) => a.lessonTypeName.localeCompare(b.lessonTypeName, "zh-CN"));
+}
+
 type RecordLessonFeeBreakdown = {
   fee: number;
   freeStudentCount: number;

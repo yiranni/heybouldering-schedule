@@ -14,6 +14,7 @@ import {
   normalizeConfigItem,
   type LessonFeeConfigDraft,
   type LessonFeeDetailsResult,
+  summarizeLessonSessionsByType,
 } from "../lib/lessonFee";
 import { LessonType } from "../types";
 
@@ -119,6 +120,11 @@ export default function PayrollPage() {
       totalLaborCost: Number(totalLaborCost.toFixed(2)),
     };
   }, [rows]);
+
+  const lessonFeeSessionSummary = useMemo(() => {
+    if (!lessonFeeDetails?.items.length) return [];
+    return summarizeLessonSessionsByType(lessonFeeDetails.items);
+  }, [lessonFeeDetails]);
 
   const openSalesDetails = async (
     coachId: string,
@@ -517,6 +523,18 @@ export default function PayrollPage() {
                 )
               ) : lessonFeeDetails && lessonFeeDetails.items.length > 0 ? (
                 <div className="space-y-4">
+                  {lessonFeeSessionSummary.length > 0 && (
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                      <div className="text-xs font-semibold text-slate-500 mb-2">上课统计</div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-sm text-slate-700">
+                        {lessonFeeSessionSummary.map((item) => (
+                          <div key={item.lessonTypeName}>
+                            {item.lessonTypeName}：{item.sessionCount}节，{item.studentCount}人
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {lessonFeeDetails.noviceFreeSummary && (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
                       <div className="font-medium">全职新手课免计</div>
