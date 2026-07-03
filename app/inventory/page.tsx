@@ -9,7 +9,7 @@ import { useStores } from "../hooks/useStores";
 import { useInventoryProducts, type Product } from "../hooks/useInventoryProducts";
 import { useProductCategories } from "../hooks/useProductCategories";
 import { useInventoryStock } from "../hooks/useInventoryStock";
-import { useInventoryTransactions } from "../hooks/useInventoryTransactions";
+import { useInventoryTransactions, sortInventoryTransactionsByTime } from "../hooks/useInventoryTransactions";
 import InventoryTable from "../components/inventory/InventoryTable";
 import TransactionHistory from "../components/inventory/TransactionHistory";
 import ProductModal from "../components/inventory/ProductModal";
@@ -110,7 +110,7 @@ export default function InventoryPage() {
     if (txPerformer) {
       list = list.filter((t) => t.performedBy.id === txPerformer);
     }
-    return list;
+    return sortInventoryTransactionsByTime(list);
   }, [transactions, txSearch, txPerformer]);
 
   const [showProductModal, setShowProductModal] = useState(false);

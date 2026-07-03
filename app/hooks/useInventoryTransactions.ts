@@ -41,6 +41,17 @@ export type TransactionFilters = {
   endDate?: string;
 };
 
+export function sortInventoryTransactionsByTime(
+  transactions: InventoryTransaction[]
+): InventoryTransaction[] {
+  return [...transactions].sort((a, b) => {
+    const performedDiff =
+      new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime();
+    if (performedDiff !== 0) return performedDiff;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
 export function useInventoryTransactions(initialFilters: TransactionFilters = {}) {
   const [transactions, setTransactions] = useState<InventoryTransaction[]>([]);
   const [filters, setFilters] = useState<TransactionFilters>(initialFilters);
@@ -59,7 +70,8 @@ export function useInventoryTransactions(initialFilters: TransactionFilters = {}
       if (filters.endDate) params.set("endDate", filters.endDate);
       const res = await fetch(`/api/inventory/transactions?${params.toString()}`);
       if (!res.ok) throw new Error(await res.text());
-      setTransactions(await res.json());
+      const data: InventoryTransaction[] = await res.json();
+      setTransactions(sortInventoryTransactionsByTime(data));
     } catch (e) {
       setError(e instanceof Error ? e.message : "加载失败");
     } finally {
