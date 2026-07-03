@@ -19,7 +19,7 @@ import { ShiftType, ScheduleItem, WorkloadStats } from "./types";
 import { addDays, getWeekDays, getMonthDays, getDayOfWeek } from "./utils/date";
 import { generateWeekSchedule } from "./utils/schedule";
 import { exportScheduleToDoc, downloadTextFile } from "./utils/export";
-import { HOURS_CONFIG } from "./constants";
+import { calcMonthlyHoursByCoach } from "./lib/scheduleHours";
 import { useCoaches } from "./hooks/useCoaches";
 import { useStores } from "./hooks/useStores";
 import { useSchedules } from "./hooks/useSchedules";
@@ -221,68 +221,6 @@ export default function RockGymScheduler() {
     }
   };
 
-  // 辅助函数：将时间字符串转换为分钟数
-  const timeToMinutes = useCallback((time: string): number => {
-    const [hour, min] = time.split(':').map(Number);
-    return hour * 60 + min;
-  }, []);
-
-  // 辅助函数：合并重叠的时间段并返回总分钟数
-  const mergeTimeRanges = useCallback((ranges: Array<{ start: number; end: number }>): number => {
-    if (ranges.length === 0) return 0;
-    if (ranges.length === 1) return ranges[0].end - ranges[0].start;
-
-    // 按开始时间排序
-    const sorted = [...ranges].sort((a, b) => a.start - b.start);
-    
-    // 合并重叠的时间段
-    const merged: Array<{ start: number; end: number }> = [sorted[0]];
-    
-    for (let i = 1; i < sorted.length; i++) {
-      const current = sorted[i];
-      const last = merged[merged.length - 1];
-      
-      if (current.start <= last.end) {
-        // 有重叠，合并
-        last.end = Math.max(last.end, current.end);
-      } else {
-        // 没有重叠，添加新的时间段
-        merged.push(current);
-      }
-    }
-    
-    // 计算总分钟数
-    return merged.reduce((total, range) => total + (range.end - range.start), 0);
-  }, []);
-
-  // 辅助函数：计算班次时长
-  const calculateShiftDuration = useCallback((start: string, end: string): number => {
-    const [startHour, startMin] = start.split(':').map(Number);
-    const [endHour, endMin] = end.split(':').map(Number);
-    
-    let startMinutes = startHour * 60 + startMin;
-    let endMinutes = endHour * 60 + endMin;
-    
-    // 如果结束时间小于开始时间，说明跨天了（如 13:00 到 01:00）
-    if (endMinutes < startMinutes) {
-      endMinutes += 24 * 60; // 加上24小时
-    }
-    
-    const durationMinutes = endMinutes - startMinutes;
-    return durationMinutes / 60; // 转换为小时
-  }, []);
-
-  // 辅助函数：使用旧系统计算时长
-  const calculateHoursFromOldSystem = useCallback((schedule: ScheduleItem): number => {
-    if (schedule.shiftType === "MORNING") {
-      return HOURS_CONFIG.MORNING.duration;
-    } else {
-      return schedule.isExtended
-        ? HOURS_CONFIG.EVENING_EXTENDED.duration
-        : HOURS_CONFIG.EVENING.duration;
-    }
-  }, []);
-
   const calculateStats = useCallback((dateRange: string[]) => {
     const data: Record<string, WorkloadStats> = {};
     coaches.forEach(
@@ -295,88 +233,29 @@ export default function RockGymScheduler() {
         })
     );
 
-    // 按教练和日期分组，以便检测重叠
-    const schedulesByCoachAndDate: Record<string, ScheduleItem[]> = {};
-    
-    schedules
-      .filter((s) => dateRange.includes(s.dateStr))
-      .forEach((s) => {
-        const key = `${s.coachId}-${s.dateStr}`;
-        if (!schedulesByCoachAndDate[key]) {
-          schedulesByCoachAndDate[key] = [];
-        }
-        schedulesByCoachAndDate[key].push(s);
-      });
+    const filteredSchedules = schedules.filter((s) => dateRange.includes(s.dateStr));
+    const storeMap = new Map(stores.map((store) => [store.id, store]));
+    const hoursByCoach = calcMonthlyHoursByCoach(filteredSchedules, storeMap);
 
-    // 计算每个教练每天的实际工作时长（考虑重叠）
-    Object.entries(schedulesByCoachAndDate).forEach(([key, daySchedules]) => {
-      const coachId = key.split('-')[0];
-      const dateStr = key.split('-').slice(1).join('-');
-      
-      if (!data[coachId]) return;
-
-      data[coachId].totalShifts += daySchedules.length;
-      data[coachId].daysWorked.add(dateStr);
-
-      // 获取所有班次的时间段
-      const timeRanges: Array<{ start: number; end: number }> = [];
-      
-      daySchedules.forEach((s) => {
-        const store = stores.find(st => st.id === s.storeId);
-        let startTime: string;
-        let endTime: string;
-
-        if (store && store.shifts && store.shifts.length > 0) {
-          const shift = store.shifts.find(sh => sh.id === s.shiftId);
-          if (shift) {
-            startTime = shift.start;
-            endTime = shift.end;
-          } else {
-            // 使用旧系统的默认值
-            if (s.shiftType === "MORNING") {
-              startTime = HOURS_CONFIG.MORNING.start;
-              endTime = HOURS_CONFIG.MORNING.end;
-            } else {
-              startTime = HOURS_CONFIG.EVENING.start;
-              endTime = s.isExtended ? HOURS_CONFIG.EVENING_EXTENDED.end : HOURS_CONFIG.EVENING.end;
-            }
-          }
-        } else {
-          // 旧系统
-          if (s.shiftType === "MORNING") {
-            startTime = HOURS_CONFIG.MORNING.start;
-            endTime = HOURS_CONFIG.MORNING.end;
-          } else {
-            startTime = HOURS_CONFIG.EVENING.start;
-            endTime = s.isExtended ? HOURS_CONFIG.EVENING_EXTENDED.end : HOURS_CONFIG.EVENING.end;
-          }
-        }
-
-        // 转换为分钟数（从当天00:00开始）
-        const startMinutes = timeToMinutes(startTime);
-        let endMinutes = timeToMinutes(endTime);
-        
-        // 如果结束时间小于开始时间，说明跨天了
-        if (endMinutes < startMinutes) {
-          endMinutes += 24 * 60;
-        }
-
-        timeRanges.push({ start: startMinutes, end: endMinutes });
-
-        if (s.isExtended && data[coachId].extended !== undefined) {
-          data[coachId].extended! += 1;
-        }
-      });
-
-      // 合并重叠的时间段并计算总时长
-      const totalMinutes = mergeTimeRanges(timeRanges);
-      data[coachId].totalHours += totalMinutes / 60;
+    filteredSchedules.forEach((schedule) => {
+      if (!data[schedule.coachId]) return;
+      data[schedule.coachId].totalShifts += 1;
+      data[schedule.coachId].daysWorked.add(schedule.dateStr);
+      if (schedule.isExtended && data[schedule.coachId].extended !== undefined) {
+        data[schedule.coachId].extended! += 1;
+      }
     });
+
+    for (const [coachId, totalHours] of hoursByCoach.entries()) {
+      if (data[coachId]) {
+        data[coachId].totalHours = totalHours;
+      }
+    }
 
     return Object.entries(data).sort(
       ([, a], [, b]) => b.totalHours - a.totalHours
     );
-  }, [coaches, schedules, stores, timeToMinutes, mergeTimeRanges]);
+  }, [coaches, schedules, stores]);
 
   const weekStats = useMemo(
     () => calculateStats(weekDays),

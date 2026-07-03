@@ -6,11 +6,6 @@ export type TimeRange = { start: number; end: number };
 export type StoreForScheduleHours = {
   id: string;
   shifts?: unknown;
-  morningShiftStart?: string;
-  morningShiftEnd?: string;
-  eveningShiftStart?: string;
-  eveningShiftEnd?: string;
-  eveningExtendedEnd?: string | null;
 };
 
 export type ScheduleForHours = {
@@ -55,97 +50,32 @@ function mergeRanges(ranges: TimeRange[]): number {
   return merged.reduce((sum, range) => sum + (range.end - range.start), 0);
 }
 
-function getDayOfWeek(dateStr: string): number {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  return new Date(year, month - 1, day).getDay();
-}
-
-function parseStoreShifts(store: StoreForScheduleHours): Shift[] {
-  if (Array.isArray(store.shifts) && store.shifts.length > 0) {
-    return store.shifts as Shift[];
-  }
-  return [
-    {
-      id: "morning",
-      name: "早班",
-      start: store.morningShiftStart || HOURS_CONFIG.MORNING.start,
-      end: store.morningShiftEnd || HOURS_CONFIG.MORNING.end,
-      daysOfWeek: null,
-    },
-    {
-      id: "evening",
-      name: "晚班",
-      start: store.eveningShiftStart || HOURS_CONFIG.EVENING.start,
-      end: store.eveningShiftEnd || HOURS_CONFIG.EVENING.end,
-      daysOfWeek: null,
-    },
-  ];
-}
-
-function isEveningShift(shiftId: string, shiftName?: string): boolean {
-  const id = shiftId.toLowerCase();
-  if (id === "evening" || id.includes("evening")) return true;
-  if (id === "morning" || id.includes("morning")) return false;
-  if (shiftName?.includes("晚")) return true;
-  if (shiftName?.includes("早")) return false;
-  return false;
-}
-
-function isMorningShift(shiftId: string, shiftName?: string): boolean {
-  const id = shiftId.toLowerCase();
-  if (id === "morning" || id.includes("morning")) return true;
-  if (id === "evening" || id.includes("evening")) return false;
-  if (shiftName?.includes("早")) return true;
-  if (shiftName?.includes("晚")) return false;
-  return false;
-}
-
-function resolveEveningEndTime(
-  schedule: ScheduleForHours,
-  store: StoreForScheduleHours | undefined,
-  defaultEnd: string
-): string {
-  if (schedule.isExtended) {
-    return store?.eveningExtendedEnd || HOURS_CONFIG.EVENING_EXTENDED.end;
-  }
-
-  const dayOfWeek = getDayOfWeek(schedule.dateStr);
-  const isWeekendEvening =
-    (dayOfWeek === 5 || dayOfWeek === 6) &&
-    (schedule.shiftType === "EVENING" || isEveningShift(schedule.shiftId, schedule.shiftName));
-
-  if (!isWeekendEvening) return defaultEnd;
-  if (store?.eveningExtendedEnd) return store.eveningExtendedEnd;
-  if (schedule.shiftId === "evening") return HOURS_CONFIG.EVENING_EXTENDED.end;
-  return defaultEnd;
-}
-
+/** 与排班页 calculateStats 保持一致的班次时段解析 */
 export function resolveScheduleShiftTimes(
   schedule: ScheduleForHours,
   store: StoreForScheduleHours | undefined
 ): { start: string; end: string } {
-  const shifts = store ? parseStoreShifts(store) : [];
-  const matched = shifts.find((shift) => shift.id === schedule.shiftId);
-
-  if (matched) {
-    const end = resolveEveningEndTime(schedule, store, matched.end);
-    return { start: matched.start, end };
-  }
-
-  if (schedule.shiftType === "MORNING" || isMorningShift(schedule.shiftId, schedule.shiftName)) {
-    return { start: HOURS_CONFIG.MORNING.start, end: HOURS_CONFIG.MORNING.end };
-  }
-
-  if (schedule.shiftType === "EVENING" || isEveningShift(schedule.shiftId, schedule.shiftName)) {
+  const shifts = store?.shifts;
+  if (store && Array.isArray(shifts) && shifts.length > 0) {
+    const matched = (shifts as Shift[]).find((shift) => shift.id === schedule.shiftId);
+    if (matched) {
+      return { start: matched.start, end: matched.end };
+    }
+    if (schedule.shiftType === "MORNING") {
+      return { start: HOURS_CONFIG.MORNING.start, end: HOURS_CONFIG.MORNING.end };
+    }
     return {
       start: HOURS_CONFIG.EVENING.start,
-      end: resolveEveningEndTime(schedule, store, HOURS_CONFIG.EVENING.end),
+      end: schedule.isExtended ? HOURS_CONFIG.EVENING_EXTENDED.end : HOURS_CONFIG.EVENING.end,
     };
   }
 
+  if (schedule.shiftType === "MORNING") {
+    return { start: HOURS_CONFIG.MORNING.start, end: HOURS_CONFIG.MORNING.end };
+  }
   return {
     start: HOURS_CONFIG.EVENING.start,
-    end: HOURS_CONFIG.EVENING.end,
+    end: schedule.isExtended ? HOURS_CONFIG.EVENING_EXTENDED.end : HOURS_CONFIG.EVENING.end,
   };
 }
 

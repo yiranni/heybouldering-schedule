@@ -146,27 +146,29 @@ export async function GET(request: NextRequest) {
       fetchLessonFeeConfig(),
     ]);
 
-    const [schedulesInMonth, stores] = await Promise.all([
-      prisma.schedule.findMany({
-        where: {
-          dateStr: {
-            gte: startDate,
-            lte: endDate,
-          },
+    const schedulesInMonth = await prisma.schedule.findMany({
+      where: {
+        dateStr: {
+          gte: startDate,
+          lte: endDate,
         },
-        select: {
-          coachId: true,
-          dateStr: true,
-          storeId: true,
-          shiftId: true,
-          shiftName: true,
-        },
-      }),
-      prisma.store.findMany({
-        where: { archived: false },
-        select: { id: true, shifts: true },
-      }),
-    ]);
+      },
+      select: {
+        coachId: true,
+        dateStr: true,
+        storeId: true,
+        shiftId: true,
+        shiftName: true,
+      },
+    });
+    const scheduleStoreIds = [...new Set(schedulesInMonth.map((schedule) => schedule.storeId))];
+    const stores =
+      scheduleStoreIds.length > 0
+        ? await prisma.store.findMany({
+            where: { id: { in: scheduleStoreIds } },
+            select: { id: true, shifts: true },
+          })
+        : [];
     const storeMap = new Map(stores.map((store) => [store.id, store]));
     const monthHoursByCoach = calcMonthlyHoursByCoach(schedulesInMonth, storeMap);
 
@@ -203,30 +205,13 @@ export async function GET(request: NextRequest) {
         const current = recordByCoach.get(coach.id);
         const scheduleHours = round2(monthHoursByCoach.get(coach.id) || 0);
         const hourlyRate = round2(current?.hourlyRate ?? DEFAULT_PART_TIME_HOURLY_RATE);
-        const savedHours =
-          current?.workedHours == null ? null : round2(current.workedHours);
-        const savedSalaryFromHours =
-          savedHours == null ? null : round2(savedHours * hourlyRate);
 
         let monthHours = scheduleHours;
         let basicSalary: number;
 
         if (coach.employmentType === "PART_TIME") {
-          // 兼职默认按排班统计工时；仅当保存的工时/工资与排班推算明显不一致时，视为人工调整
-          const hasManualHoursOverride =
-            savedHours != null &&
-            savedSalaryFromHours != null &&
-            current?.basicSalary != null &&
-            Math.abs(current.basicSalary - savedSalaryFromHours) < 0.01 &&
-            Math.abs(savedHours - scheduleHours) > 0.05;
-
-          if (hasManualHoursOverride) {
-            monthHours = savedHours;
-            basicSalary = round2(current.basicSalary);
-          } else {
-            monthHours = scheduleHours;
-            basicSalary = round2(monthHours * hourlyRate);
-          }
+          monthHours = scheduleHours;
+          basicSalary = round2(monthHours * hourlyRate);
         } else {
           // 全职按月薪，支持从上月带入
           basicSalary = current?.basicSalary ?? 0;
