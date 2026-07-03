@@ -9,6 +9,10 @@ import {
   fetchLessonFeeConfig,
 } from "@/app/lib/lessonFee.server";
 import { resolveSalesAccess } from "@/app/lib/salesAccess";
+import {
+  calcMonthlyHoursByCoach,
+  getMonthDateStrBounds,
+} from "@/app/lib/scheduleHours";
 
 type SalesTotalRow = {
   coachId: string;
@@ -43,8 +47,6 @@ type CommissionRuleRow = {
 
 const DEFAULT_PART_TIME_HOURLY_RATE = 20;
 
-type TimeRange = { start: number; end: number };
-
 function isValidMonth(month: string): boolean {
   return /^\d{4}-\d{2}$/.test(month);
 }
@@ -60,52 +62,6 @@ function getMonthRange(month: string): { start: Date; end: Date } {
 
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
-}
-
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return h * 60 + m;
-}
-
-function getDurationRange(startTime: string, endTime: string): TimeRange {
-  const start = timeToMinutes(startTime);
-  let end = timeToMinutes(endTime);
-  if (end < start) end += 24 * 60;
-  return { start, end };
-}
-
-function mergeRanges(ranges: TimeRange[]): number {
-  if (ranges.length === 0) return 0;
-  const sorted = [...ranges].sort((a, b) => a.start - b.start);
-  const merged: TimeRange[] = [sorted[0]];
-  for (let i = 1; i < sorted.length; i++) {
-    const current = sorted[i];
-    const last = merged[merged.length - 1];
-    if (current.start <= last.end) {
-      last.end = Math.max(last.end, current.end);
-    } else {
-      merged.push(current);
-    }
-  }
-  return merged.reduce((sum, r) => sum + (r.end - r.start), 0);
-}
-
-function resolveShiftRange(
-  storeShifts: unknown,
-  shiftId: string
-): TimeRange {
-  const shifts = Array.isArray(storeShifts) ? storeShifts : [];
-  const matched = shifts.find((s) => {
-    const item = s as { id?: unknown };
-    return String(item.id || "") === shiftId;
-  }) as { start?: unknown; end?: unknown } | undefined;
-
-  const start = typeof matched?.start === "string" ? matched.start : "";
-  const end = typeof matched?.end === "string" ? matched.end : "";
-  if (start && end) return getDurationRange(start, end);
-
-  if (shiftId.toLowerCase().includes("morning")) return getDurationRange("10:00", "20:00");
-  return getDurationRange("13:00", "23:00");
 }
 
 function calcCommission(totalSales: number, rules: Array<{ minAmount: number; commissionRate: number }>): number {
@@ -127,6 +83,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "month 格式应为 YYYY-MM" }, { status: 400 });
     }
     const { start, end } = getMonthRange(month);
+    const { startDate, endDate } = getMonthDateStrBounds(month);
 
     const [coaches, records, rules, salesRows, lessonTypes, lessonRecordsInMonth, savedFeeConfig] =
       await Promise.all([
@@ -174,8 +131,8 @@ export async function GET(request: NextRequest) {
       prisma.lessonRecord.findMany({
         where: {
           dateStr: {
-            gte: `${month}-01`,
-            lte: `${month}-31`,
+            gte: startDate,
+            lte: endDate,
           },
         },
         select: {
@@ -193,8 +150,8 @@ export async function GET(request: NextRequest) {
       prisma.schedule.findMany({
         where: {
           dateStr: {
-            gte: month + "-01",
-            lte: month + "-31",
+            gte: startDate,
+            lte: endDate,
           },
         },
         select: {
@@ -202,6 +159,7 @@ export async function GET(request: NextRequest) {
           dateStr: true,
           storeId: true,
           shiftId: true,
+          shiftName: true,
         },
       }),
       prisma.store.findMany({
@@ -210,21 +168,7 @@ export async function GET(request: NextRequest) {
       }),
     ]);
     const storeMap = new Map(stores.map((store) => [store.id, store]));
-    const byCoachDate = new Map<string, TimeRange[]>();
-    for (const s of schedulesInMonth) {
-      const key = `${s.coachId}__${s.dateStr}`;
-      const store = storeMap.get(s.storeId);
-      const range = resolveShiftRange(store?.shifts, s.shiftId);
-      const ranges = byCoachDate.get(key) || [];
-      ranges.push(range);
-      byCoachDate.set(key, ranges);
-    }
-    const monthHoursByCoach = new Map<string, number>();
-    for (const [key, ranges] of byCoachDate.entries()) {
-      const coachId = key.split("__")[0];
-      const minutes = mergeRanges(ranges);
-      monthHoursByCoach.set(coachId, round2((monthHoursByCoach.get(coachId) || 0) + minutes / 60));
-    }
+    const monthHoursByCoach = calcMonthlyHoursByCoach(schedulesInMonth, storeMap);
 
     const recordByCoach = new Map<string, PayrollRecordRow>(
       records.map((r: PayrollRecordRow): [string, PayrollRecordRow] => [r.coachId, r])
@@ -258,15 +202,31 @@ export async function GET(request: NextRequest) {
       coaches.map(async (coach: CoachRow) => {
         const current = recordByCoach.get(coach.id);
         const scheduleHours = round2(monthHoursByCoach.get(coach.id) || 0);
-        const monthHours = round2(current?.workedHours ?? scheduleHours);
-
-        let basicSalary: number;
         const hourlyRate = round2(current?.hourlyRate ?? DEFAULT_PART_TIME_HOURLY_RATE);
+        const savedHours =
+          current?.workedHours == null ? null : round2(current.workedHours);
+        const savedSalaryFromHours =
+          savedHours == null ? null : round2(savedHours * hourlyRate);
+
+        let monthHours = scheduleHours;
+        let basicSalary: number;
+
         if (coach.employmentType === "PART_TIME") {
-          // 兼职按当月工时自动计算；如果当月被人工改过，则用当月保存值
-          basicSalary =
-            current?.basicSalary ??
-            round2(monthHours * hourlyRate);
+          // 兼职默认按排班统计工时；仅当保存的工时/工资与排班推算明显不一致时，视为人工调整
+          const hasManualHoursOverride =
+            savedHours != null &&
+            savedSalaryFromHours != null &&
+            current?.basicSalary != null &&
+            Math.abs(current.basicSalary - savedSalaryFromHours) < 0.01 &&
+            Math.abs(savedHours - scheduleHours) > 0.05;
+
+          if (hasManualHoursOverride) {
+            monthHours = savedHours;
+            basicSalary = round2(current.basicSalary);
+          } else {
+            monthHours = scheduleHours;
+            basicSalary = round2(monthHours * hourlyRate);
+          }
         } else {
           // 全职按月薪，支持从上月带入
           basicSalary = current?.basicSalary ?? 0;
