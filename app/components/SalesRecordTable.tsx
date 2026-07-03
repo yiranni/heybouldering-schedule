@@ -80,6 +80,7 @@ export default function SalesRecordTable({
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">教练</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">销售类别</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">产品</th>
+              <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">数量</th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">金额</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">备注</th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">操作</th>
@@ -88,13 +89,13 @@ export default function SalesRecordTable({
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                   加载中...
                 </td>
               </tr>
             ) : records.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
                   暂无销售记录
                 </td>
               </tr>
@@ -108,6 +109,9 @@ export default function SalesRecordTable({
                     <td className="px-4 py-3 text-sm text-slate-700">{record.coach?.name || '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{record.productCategory?.name || '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{record.productName}</td>
+                    <td className="px-4 py-3 text-sm text-right text-slate-700">
+                      {record.quantity ?? "—"}
+                    </td>
                     <td className="px-4 py-3 text-sm text-right font-medium text-slate-800">
                       ¥{record.amount.toFixed(2)}
                     </td>

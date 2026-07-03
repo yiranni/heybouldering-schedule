@@ -150,11 +150,12 @@ model SalesRecord {
   amount                 Float
   soldAt                 DateTime
   note                   String?
-  inventoryTransactionId String?          @unique
-  createdAt              DateTime         @default(now())
-  updatedAt              DateTime         @updatedAt
-  coach                  Coach?           @relation(fields: [coachId], references: [id], onDelete: SetNull)
-  productCategory        ProductCategory? @relation(fields: [productCategoryId], references: [id], onDelete: SetNull)
+  inventoryTransactionId String?              @unique
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  coach                  Coach?                 @relation(fields: [coachId], references: [id], onDelete: SetNull)
+  productCategory        ProductCategory?       @relation(fields: [productCategoryId], references: [id], onDelete: SetNull)
+  inventoryTransaction   InventoryTransaction?  @relation(fields: [inventoryTransactionId], references: [id], onDelete: SetNull)
 
   @@map("sales_records")
   @@index([coachId])
@@ -272,6 +273,7 @@ model InventoryTransaction {
   variant        ProductVariant           @relation(fields: [variantId], references: [id])
   performedBy    User                     @relation(fields: [performedById], references: [id])
   store          Store                    @relation(fields: [storeId], references: [id])
+  salesRecord    SalesRecord?
 
   @@map("inventory_transactions")
   @@index([variantId, storeId])

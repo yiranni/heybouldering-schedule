@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/app/lib/prisma";
 import { forbidden, unauthorized } from "@/app/lib/auth";
 import { resolveSalesAccess } from "@/app/lib/salesAccess";
+import {
+  createSalesRecord,
+  findProductCategoryById,
+  listSalesRecords,
+} from "@/app/lib/sales.server";
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,26 +37,7 @@ export async function GET(request: NextRequest) {
       where.coachId = access.coachId || undefined;
     }
 
-    const records = await prisma.salesRecord.findMany({
-      where,
-      include: {
-        coach: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-            avatar: true,
-          },
-        },
-        productCategory: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: [{ soldAt: "desc" }, { createdAt: "desc" }],
-    });
+    const records = await listSalesRecords(where);
 
     return NextResponse.json(records);
   } catch (error) {
@@ -94,39 +79,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "coachId 无效" }, { status: 400 });
     }
 
-    const categoryExists = await prisma.productCategory.findUnique({
-      where: { id: productCategoryId },
-      select: { id: true },
-    });
+    const categoryExists = await findProductCategoryById(productCategoryId);
     if (!categoryExists) {
       return NextResponse.json({ error: "productCategoryId 无效" }, { status: 400 });
     }
 
-    const record = await prisma.salesRecord.create({
-      data: {
-        coachId: createCoachId,
-        productCategoryId,
-        productName,
-        amount,
-        soldAt: new Date(soldAt),
-        note,
-      },
-      include: {
-        coach: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-            avatar: true,
-          },
-        },
-        productCategory: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+    const record = await createSalesRecord({
+      coachId: createCoachId,
+      productCategoryId,
+      productName,
+      amount,
+      soldAt: new Date(soldAt),
+      note,
     });
 
     return NextResponse.json(record, { status: 201 });

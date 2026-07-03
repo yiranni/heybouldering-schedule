@@ -27,6 +27,7 @@ type SalesDetailItem = {
   soldAt: string;
   productName: string;
   amount: number;
+  quantity?: number | null;
   note?: string | null;
   productCategory?: { id: string; name: string } | null;
 };
@@ -497,6 +498,7 @@ export default function PayrollPage() {
                           <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">时间</th>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">类别</th>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">产品</th>
+                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">数量</th>
                           <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">金额</th>
                           <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">提成</th>
                         </tr>
@@ -509,6 +511,9 @@ export default function PayrollPage() {
                             </td>
                             <td className="px-3 py-2 text-slate-600">{item.productCategory?.name || "其他"}</td>
                             <td className="px-3 py-2 text-slate-800">{item.productName}</td>
+                            <td className="px-3 py-2 text-right text-slate-700">
+                              {item.quantity ?? "—"}
+                            </td>
                             <td className="px-3 py-2 text-right text-slate-700">
                               {formatCurrency(item.amount)}
                             </td>

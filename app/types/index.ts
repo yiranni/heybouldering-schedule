@@ -125,6 +125,7 @@ export type SalesRecord = {
   productCategoryId?: string | null;
   productName: string;
   amount: number;
+  quantity?: number | null;
   soldAt: string; // ISO datetime
   note?: string | null;
   coach?: {
