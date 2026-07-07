@@ -50,11 +50,18 @@ function getDaysBetween(startDate: string, endDate: string): string[] {
   return days;
 }
 
+function formatWeekday(day: string): string {
+  const [year, month, date] = day.split('-').map(Number);
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  return weekdays[new Date(year, month - 1, date).getDay()];
+}
+
 function renderLessonTypeTooltip(
   active: boolean | undefined,
   payload: unknown,
   label: unknown,
-  lessonTypeNameById: Map<string, string>
+  lessonTypeNameById: Map<string, string>,
+  weekday?: string
 ) {
   const itemsPayload = Array.isArray(payload)
     ? (payload as Array<{ dataKey?: string | number; name?: string; value?: number | string }>)
@@ -70,7 +77,10 @@ function renderLessonTypeTooltip(
   const total = items.reduce((sum, item) => sum + item.value, 0);
   return (
     <div className="rounded-md border border-slate-200 bg-white px-3 py-2 shadow-sm text-sm">
-      <div className="font-medium text-slate-800 mb-1">{String(label ?? '')}</div>
+      <div className="font-medium text-slate-800 mb-1">
+        {String(label ?? '')}
+        {weekday ? <span className="text-slate-500 font-normal ml-1">{weekday}</span> : null}
+      </div>
       {items.map((item) => (
         <div key={item.name} className="text-slate-600">
           {item.name}：{item.value} 节
@@ -223,9 +233,16 @@ export default function LessonAnalytics({
                 />
                 <YAxis allowDecimals={false} width={36} tick={{ fontSize: 12 }} />
                 <Tooltip
-                  content={({ active, payload, label }) =>
-                    renderLessonTypeTooltip(active, payload, label, lessonTypeNameById)
-                  }
+                  content={({ active, payload, label }) => {
+                    const day = (payload?.[0]?.payload as { day?: string } | undefined)?.day;
+                    return renderLessonTypeTooltip(
+                      active,
+                      payload,
+                      label,
+                      lessonTypeNameById,
+                      day ? formatWeekday(day) : undefined
+                    );
+                  }}
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 {dailyChartTypes.map((lt, index) => (
