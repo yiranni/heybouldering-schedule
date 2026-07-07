@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { forbidden, unauthorized } from '@/app/lib/auth';
 import { resolveSalesAccess } from '@/app/lib/salesAccess';
+import { lessonRecordInclude, buildLessonRecordUpdateData } from '@/app/lib/lessonRecord.server';
 
 // GET /api/lesson-records/[id] - 获取单个课程记录
 export async function GET(
@@ -14,24 +15,7 @@ export async function GET(
 
     const lessonRecord = await prisma.lessonRecord.findUnique({
       where: { id: params.id },
-      include: {
-        coach: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-            avatar: true,
-          },
-        },
-        lessonType: {
-          select: {
-            id: true,
-            name: true,
-            commission: true,
-            pricingType: true,
-          },
-        },
-      },
+      include: lessonRecordInclude,
     });
 
     if (!lessonRecord) {
@@ -75,43 +59,19 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { dateStr, lessonTypeId, coachId, studentCount, note } = body;
-
-    const updateData: {
-      dateStr?: string;
-      lessonTypeId?: string;
-      coachId?: string;
-      studentCount?: number;
-      note?: string | null;
-    } = {};
-
-    if (dateStr !== undefined) updateData.dateStr = dateStr;
-    if (lessonTypeId !== undefined) updateData.lessonTypeId = lessonTypeId;
-    if (coachId !== undefined && access.isAdmin) updateData.coachId = coachId;
-    if (studentCount !== undefined) updateData.studentCount = studentCount;
-    if (note !== undefined) updateData.note = note || null;
+    const { dateStr, lessonTypeId, coachId, studentCount, storeId, note } = body;
 
     const lessonRecord = await prisma.lessonRecord.update({
       where: { id: params.id },
-      data: updateData,
-      include: {
-        coach: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-            avatar: true,
-          },
-        },
-        lessonType: {
-          select: {
-            id: true,
-            name: true,
-            commission: true,
-            pricingType: true,
-          },
-        },
-      },
+      data: buildLessonRecordUpdateData({
+        ...(dateStr !== undefined ? { dateStr } : {}),
+        ...(lessonTypeId !== undefined ? { lessonTypeId } : {}),
+        ...(coachId !== undefined && access.isAdmin ? { coachId } : {}),
+        ...(studentCount !== undefined ? { studentCount } : {}),
+        ...(storeId !== undefined ? { storeId: storeId || null } : {}),
+        ...(note !== undefined ? { note: note || null } : {}),
+      }),
+      include: lessonRecordInclude,
     });
 
     return NextResponse.json(lessonRecord);

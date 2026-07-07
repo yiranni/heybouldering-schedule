@@ -43,6 +43,7 @@ model Store {
   coaches               CoachStore[]
   schedules             Schedule[]
   inventoryTransactions InventoryTransaction[]
+  lessonRecords         LessonRecord[]
 
   @@map("stores")
 }
@@ -129,9 +130,11 @@ model LessonRecord {
   lessonTypeId  String
   coachId       String
   studentCount  Int        @default(1) // 学员人数（用于按人计价的课程）
+  storeId       String?    // 上课地点
   note          String?    // 备注
   lessonType    LessonType @relation(fields: [lessonTypeId], references: [id], onDelete: Cascade)
   coach         Coach      @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  store         Store?     @relation(fields: [storeId], references: [id], onDelete: SetNull)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -139,6 +142,7 @@ model LessonRecord {
   @@index([dateStr])
   @@index([coachId])
   @@index([lessonTypeId])
+  @@index([storeId])
 }
 
 // 销售记录

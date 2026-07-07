@@ -96,6 +96,7 @@ export type LessonRecord = {
   lessonTypeId: string;
   coachId: string;
   studentCount: number; // 学员人数（用于按人计价的课程）
+  storeId?: string | null;
   note?: string | null;
   lessonType?: {
     id: string;
@@ -108,6 +109,10 @@ export type LessonRecord = {
     name: string;
     color: string;
     avatar: string;
+  };
+  store?: {
+    id: string;
+    name: string;
   };
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Calendar, Pencil, Plus, Settings, Trash2, X } from "lucide-react";
 import TopNavMenu from "../components/TopNavMenu";
 import LessonAnalytics from "../components/LessonAnalytics";
@@ -9,13 +9,16 @@ import { useAuth } from "../components/AuthGuard";
 import { useCoaches } from "../hooks/useCoaches";
 import { useLessonRecords } from "../hooks/useLessonRecords";
 import { useLessonTypes } from "../hooks/useLessonTypes";
-import { LessonRecord, LessonType } from "../types";
+import { useStores } from "../hooks/useStores";
+import { resolveDefaultStoreId, EMPTY_STORE_FILTER, matchesStoreFilter } from "../lib/lessonStore";
+import { LessonRecord, LessonType, ScheduleItem } from "../types";
 
 type RecordFormState = {
   id?: string;
   dateStr: string;
   lessonTypeId: string;
   coachId?: string;
+  storeId: string;
   studentCount: number;
 };
 
@@ -47,6 +50,7 @@ export default function LessonsPage() {
   const isAdmin = user?.role === "ADMIN";
   const defaultDateRange = useMemo(() => getCurrentMonthDateRange(), []);
   const { coaches } = useCoaches();
+  const { stores } = useStores();
   const { lessonTypes, createLessonType, updateLessonType, deleteLessonType } = useLessonTypes();
   const {
     lessonRecords,
@@ -65,22 +69,95 @@ export default function LessonsPage() {
     dateStr: toDateTimeLocalInput(),
     lessonTypeId: "",
     coachId: "",
+    storeId: "",
     studentCount: 1,
   });
 
+  const [modalSchedules, setModalSchedules] = useState<ScheduleItem[]>([]);
+
   const [newTypeName, setNewTypeName] = useState("");
   const [editingType, setEditingType] = useState<LessonType | null>(null);
+  const [lessonTypeFilter, setLessonTypeFilter] = useState<string | undefined>();
+  const [storeFilter, setStoreFilter] = useState<string | undefined>();
+
+  const filteredRecords = useMemo(() => {
+    return lessonRecords.filter((record) => {
+      if (lessonTypeFilter && record.lessonTypeId !== lessonTypeFilter) return false;
+      if (!matchesStoreFilter(record, storeFilter)) return false;
+      return true;
+    });
+  }, [lessonRecords, lessonTypeFilter, storeFilter]);
 
   const sortedRecords = useMemo(
-    () => [...lessonRecords].sort((a, b) => new Date(b.dateStr).getTime() - new Date(a.dateStr).getTime()),
-    [lessonRecords]
+    () => [...filteredRecords].sort((a, b) => new Date(b.dateStr).getTime() - new Date(a.dateStr).getTime()),
+    [filteredRecords]
   );
 
+  const effectiveCoachId = useMemo(() => {
+    if (isAdmin) return recordForm.coachId || coaches[0]?.id || "";
+    return coaches.find((coach) => coach.userId === user?.id)?.id || lessonRecords[0]?.coachId || "";
+  }, [isAdmin, recordForm.coachId, coaches, user?.id, lessonRecords]);
+
+  const scheduleDay = useMemo(() => recordForm.dateStr.slice(0, 10), [recordForm.dateStr]);
+
+  useEffect(() => {
+    if (!showRecordModal) {
+      setModalSchedules([]);
+      return;
+    }
+
+    if (!scheduleDay) {
+      setModalSchedules([]);
+      return;
+    }
+
+    setModalSchedules([]);
+
+    let cancelled = false;
+    fetch(`/api/schedules?startDate=${scheduleDay}&endDate=${scheduleDay}`)
+      .then((response) => (response.ok ? response.json() : []))
+      .then((data: ScheduleItem[]) => {
+        if (!cancelled) setModalSchedules(data);
+      })
+      .catch(() => {
+        if (!cancelled) setModalSchedules([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showRecordModal, scheduleDay]);
+
+  useEffect(() => {
+    if (!showRecordModal || recordForm.id || stores.length === 0 || !scheduleDay) return;
+
+    const defaultStoreId = resolveDefaultStoreId(
+      effectiveCoachId,
+      recordForm.dateStr,
+      modalSchedules,
+      stores
+    );
+
+    if (!defaultStoreId) return;
+
+    setRecordForm((prev) => (prev.storeId === defaultStoreId ? prev : { ...prev, storeId: defaultStoreId }));
+  }, [
+    showRecordModal,
+    recordForm.id,
+    scheduleDay,
+    effectiveCoachId,
+    modalSchedules,
+    stores,
+  ]);
+
   const openCreateModal = () => {
+    const coachId = isAdmin ? coaches[0]?.id || "" : effectiveCoachId;
+    const dateStr = toDateTimeLocalInput();
     setRecordForm({
-      dateStr: toDateTimeLocalInput(),
+      dateStr,
       lessonTypeId: lessonTypes[0]?.id || "",
-      coachId: isAdmin ? coaches[0]?.id || "" : "",
+      coachId,
+      storeId: resolveDefaultStoreId(coachId, dateStr, [], stores),
       studentCount: 1,
     });
     setShowRecordModal(true);
@@ -92,18 +169,23 @@ export default function LessonsPage() {
       dateStr: toDateTimeLocalInput(record.dateStr),
       lessonTypeId: record.lessonTypeId,
       coachId: record.coachId,
+      storeId: record.storeId || "",
       studentCount: record.studentCount || 1,
     });
     setShowRecordModal(true);
   };
 
   const saveRecord = async () => {
-    if (!recordForm.dateStr || !recordForm.lessonTypeId) return;
+    if (!recordForm.dateStr || !recordForm.lessonTypeId) {
+      alert("请填写上课时间和课程类型");
+      return;
+    }
     setSavingRecord(true);
     try {
       const payload = {
         dateStr: toIsoStringFromLocal(recordForm.dateStr),
         lessonTypeId: recordForm.lessonTypeId,
+        ...(recordForm.storeId ? { storeId: recordForm.storeId } : {}),
         studentCount: Math.max(1, Number(recordForm.studentCount || 1)),
         ...(isAdmin ? { coachId: recordForm.coachId } : {}),
       } as any;
@@ -230,6 +312,31 @@ export default function LessonsPage() {
                     ))}
                   </select>
                 )}
+                <select
+                  value={lessonTypeFilter || ""}
+                  onChange={(e) => setLessonTypeFilter(e.target.value || undefined)}
+                  className="px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                >
+                  <option value="">全部课程类型</option>
+                  {lessonTypes.map((lt) => (
+                    <option key={lt.id} value={lt.id}>
+                      {lt.name}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={storeFilter || ""}
+                  onChange={(e) => setStoreFilter(e.target.value || undefined)}
+                  className="px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                >
+                  <option value="">全部上课地点</option>
+                  <option value={EMPTY_STORE_FILTER}>未填写地点</option>
+                  {stores.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -240,6 +347,10 @@ export default function LessonsPage() {
               coaches={coaches}
               lessonTypes={lessonTypes}
               coachId={filters.coachId}
+              lessonTypeId={lessonTypeFilter}
+              storeFilter={storeFilter}
+              startDate={filters.startDate}
+              endDate={filters.endDate}
             />
           )}
 
@@ -248,6 +359,7 @@ export default function LessonsPage() {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">教练</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">上课时间</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">上课地点</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">课程类型</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">人数</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">操作</th>
@@ -256,17 +368,18 @@ export default function LessonsPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-slate-500">加载中...</td>
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">加载中...</td>
                 </tr>
               ) : sortedRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-slate-400">暂无课程记录</td>
+                  <td colSpan={6} className="px-4 py-10 text-center text-slate-400">暂无课程记录</td>
                 </tr>
               ) : (
                 sortedRecords.map((record) => (
                   <tr key={record.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 text-sm text-slate-700">{record.coach?.name || "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{new Date(record.dateStr).toLocaleString("zh-CN")}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">{record.store?.name ?? ""}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{record.lessonType?.name || "-"}</td>
                     <td className="px-4 py-3 text-sm text-right text-slate-700">{record.studentCount || 1}</td>
                     <td className="px-4 py-3">
@@ -312,7 +425,18 @@ export default function LessonsPage() {
                   <label className="block text-sm text-slate-600 mb-1">教练</label>
                   <select
                     value={recordForm.coachId || ""}
-                    onChange={(e) => setRecordForm((prev) => ({ ...prev, coachId: e.target.value }))}
+                    onChange={(e) =>
+                      setRecordForm((prev) => ({
+                        ...prev,
+                        coachId: e.target.value,
+                        storeId: resolveDefaultStoreId(
+                          e.target.value,
+                          prev.dateStr,
+                          modalSchedules,
+                          stores
+                        ),
+                      }))
+                    }
                     className="w-full px-3 py-2 border border-slate-300 rounded-md"
                   >
                     {coaches.map((coach) => (
@@ -329,6 +453,19 @@ export default function LessonsPage() {
                   onChange={(e) => setRecordForm((prev) => ({ ...prev, dateStr: e.target.value }))}
                   className="w-full px-3 py-2 border border-slate-300 rounded-md"
                 />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-600 mb-1">上课地点</label>
+                <select
+                  value={recordForm.storeId}
+                  onChange={(e) => setRecordForm((prev) => ({ ...prev, storeId: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md"
+                >
+                  <option value="">未选择</option>
+                  {stores.map((store) => (
+                    <option key={store.id} value={store.id}>{store.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm text-slate-600 mb-1">课程类型</label>

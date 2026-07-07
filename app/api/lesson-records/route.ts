@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { forbidden, unauthorized } from '@/app/lib/auth';
 import { resolveSalesAccess } from '@/app/lib/salesAccess';
+import { lessonRecordInclude, buildLessonRecordCreateData } from '@/app/lib/lessonRecord.server';
 
 // GET /api/lesson-records - 获取课程记录列表（支持筛选）
 export async function GET(request: NextRequest) {
@@ -42,24 +43,7 @@ export async function GET(request: NextRequest) {
 
     const lessonRecords = await prisma.lessonRecord.findMany({
       where,
-      include: {
-        coach: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-            avatar: true,
-          },
-        },
-        lessonType: {
-          select: {
-            id: true,
-            name: true,
-            commission: true,
-            pricingType: true,
-          },
-        },
-      },
+      include: lessonRecordInclude,
       orderBy: [
         { dateStr: 'desc' },
         { createdAt: 'desc' },
@@ -90,6 +74,7 @@ export async function POST(request: NextRequest) {
     const lessonTypeId = String(body?.lessonTypeId || '');
     const note = body?.note ? String(body.note) : null;
     const studentCount = Number(body?.studentCount ?? 1);
+    const storeId = body?.storeId ? String(body.storeId) : null;
     const coachId = access.isAdmin ? String(body?.coachId || '') : (access.coachId || '');
 
     if (!dateStr || !lessonTypeId || !coachId) {
@@ -104,31 +89,15 @@ export async function POST(request: NextRequest) {
     }
 
     const lessonRecord = await prisma.lessonRecord.create({
-      data: {
+      data: buildLessonRecordCreateData({
         dateStr,
         lessonTypeId,
         coachId,
         studentCount,
+        storeId,
         note,
-      },
-      include: {
-        coach: {
-          select: {
-            id: true,
-            name: true,
-            color: true,
-            avatar: true,
-          },
-        },
-        lessonType: {
-          select: {
-            id: true,
-            name: true,
-            commission: true,
-            pricingType: true,
-          },
-        },
-      },
+      }),
+      include: lessonRecordInclude,
     });
 
     return NextResponse.json(lessonRecord, { status: 201 });
