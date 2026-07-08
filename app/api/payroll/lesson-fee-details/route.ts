@@ -3,6 +3,7 @@ import { prisma } from "@/app/lib/prisma";
 import { forbidden, unauthorized } from "@/app/lib/auth";
 import { calcCoachLessonFeeDetails, resolveLessonFeeConfigMap } from "@/app/lib/lessonFee";
 import { fetchLessonFeeConfig } from "@/app/lib/lessonFee.server";
+import { getLessonRecordMonthDateFilter } from "@/app/lib/scheduleHours";
 import { resolveSalesAccess } from "@/app/lib/salesAccess";
 
 function isValidMonth(month: string): boolean {
@@ -42,10 +43,7 @@ export async function GET(request: NextRequest) {
       prisma.lessonRecord.findMany({
         where: {
           coachId,
-          dateStr: {
-            gte: `${month}-01`,
-            lte: `${month}-31`,
-          },
+          ...getLessonRecordMonthDateFilter(month),
         },
         select: {
           id: true,

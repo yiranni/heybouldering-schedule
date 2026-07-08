@@ -91,6 +91,24 @@ export function getMonthDateStrBounds(month: string): { startDate: string; endDa
   };
 }
 
+/** Lesson records store ISO datetimes in dateStr; use [start, nextMonth) for safe filtering. */
+export function getLessonRecordMonthDateFilter(month: string): {
+  dateStr: { gte: string; lt: string };
+} {
+  const { startDate } = getMonthDateStrBounds(month);
+  const [yearStr, monthStr] = month.split("-");
+  const year = Number(yearStr);
+  const monthNum = Number(monthStr);
+  const nextMonth = new Date(year, monthNum, 1);
+  const nextMonthStart = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-01`;
+  return {
+    dateStr: {
+      gte: startDate,
+      lt: nextMonthStart,
+    },
+  };
+}
+
 export function calcMonthlyHoursByCoach(
   schedules: ScheduleForHours[],
   storeMap: Map<string, StoreForScheduleHours>

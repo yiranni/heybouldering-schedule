@@ -11,6 +11,7 @@ import {
 import { resolveSalesAccess } from "@/app/lib/salesAccess";
 import {
   calcMonthlyHoursByCoach,
+  getLessonRecordMonthDateFilter,
   getMonthDateStrBounds,
 } from "@/app/lib/scheduleHours";
 
@@ -129,12 +130,7 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "asc" },
       }),
       prisma.lessonRecord.findMany({
-        where: {
-          dateStr: {
-            gte: startDate,
-            lte: endDate,
-          },
-        },
+        where: getLessonRecordMonthDateFilter(month),
         select: {
           coachId: true,
           dateStr: true,

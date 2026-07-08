@@ -1,5 +1,6 @@
 import { prisma } from "@/app/lib/prisma";
 import { findPayrollSettingValue } from "@/app/lib/payrollSettings";
+import { getLessonRecordMonthDateFilter } from "@/app/lib/scheduleHours";
 import {
   LESSON_FEE_CONFIG_KEY,
   buildLessonFeeByCoach,
@@ -25,12 +26,7 @@ export async function calcLessonFeesByCoachForMonth(month: string): Promise<Map<
       orderBy: { createdAt: "asc" },
     }),
     prisma.lessonRecord.findMany({
-      where: {
-        dateStr: {
-          gte: `${month}-01`,
-          lte: `${month}-31`,
-        },
-      },
+      where: getLessonRecordMonthDateFilter(month),
       select: {
         coachId: true,
         dateStr: true,
