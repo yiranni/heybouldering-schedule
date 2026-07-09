@@ -57,7 +57,8 @@ export function useLessonRecords(initialFilters?: LessonRecordFilters) {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to create lesson record');
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.error || 'Failed to create lesson record');
     }
 
     const newRecord = await response.json();

@@ -11,6 +11,13 @@ import { useLessonRecords } from "../hooks/useLessonRecords";
 import { useLessonTypes } from "../hooks/useLessonTypes";
 import { useStores } from "../hooks/useStores";
 import { resolveDefaultStoreId, EMPTY_STORE_FILTER, matchesStoreFilter } from "../lib/lessonStore";
+import {
+  FEATURE_FLAG_ALLOW_DELAY_CREATE_CLASS,
+  getLessonCreateDateTimeLocalBounds,
+  isLessonCreateDateAllowed,
+  LESSON_CREATE_DATE_RESTRICTED_ERROR,
+  toDateTimeLocalInput,
+} from "../lib/featureFlags";
 import { LessonRecord, LessonType, ScheduleItem } from "../types";
 
 type RecordFormState = {
@@ -21,12 +28,6 @@ type RecordFormState = {
   storeId: string;
   studentCount: number;
 };
-
-function toDateTimeLocalInput(value?: string): string {
-  const d = value ? new Date(value) : new Date();
-  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 16);
-}
 
 function toIsoStringFromLocal(value: string): string {
   return new Date(value).toISOString();
@@ -79,6 +80,19 @@ export default function LessonsPage() {
   const [editingType, setEditingType] = useState<LessonType | null>(null);
   const [lessonTypeFilter, setLessonTypeFilter] = useState<string | undefined>();
   const [storeFilter, setStoreFilter] = useState<string | undefined>();
+  const [allowDelayCreateClass, setAllowDelayCreateClass] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/feature-flags/${FEATURE_FLAG_ALLOW_DELAY_CREATE_CLASS}`)
+      .then((response) => (response.ok ? response.json() : { value: false }))
+      .then((data: { value?: boolean }) => setAllowDelayCreateClass(!!data.value))
+      .catch(() => setAllowDelayCreateClass(false));
+  }, []);
+
+  const lessonDateTimeBounds = useMemo(
+    () => getLessonCreateDateTimeLocalBounds(isAdmin || allowDelayCreateClass),
+    [isAdmin, allowDelayCreateClass]
+  );
 
   const filteredRecords = useMemo(() => {
     return lessonRecords.filter((record) => {
@@ -180,6 +194,14 @@ export default function LessonsPage() {
       alert("请填写上课时间和课程类型");
       return;
     }
+    if (
+      !recordForm.id &&
+      !isAdmin &&
+      !isLessonCreateDateAllowed(new Date(recordForm.dateStr), allowDelayCreateClass)
+    ) {
+      alert(LESSON_CREATE_DATE_RESTRICTED_ERROR);
+      return;
+    }
     setSavingRecord(true);
     try {
       const payload = {
@@ -196,8 +218,8 @@ export default function LessonsPage() {
         await createLessonRecord(payload);
       }
       setShowRecordModal(false);
-    } catch {
-      alert("保存课程记录失败");
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "保存课程记录失败");
     } finally {
       setSavingRecord(false);
     }
@@ -451,8 +473,13 @@ export default function LessonsPage() {
                   type="datetime-local"
                   value={recordForm.dateStr}
                   onChange={(e) => setRecordForm((prev) => ({ ...prev, dateStr: e.target.value }))}
+                  min={!recordForm.id ? lessonDateTimeBounds.min : undefined}
+                  max={!recordForm.id ? lessonDateTimeBounds.max : undefined}
                   className="w-full px-3 py-2 border border-slate-300 rounded-md"
                 />
+                {!recordForm.id && !isAdmin && !allowDelayCreateClass && (
+                  <p className="mt-1 text-xs text-slate-500">仅可补录最近 48 小时内的课程</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm text-slate-600 mb-1">上课地点</label>

@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
 // Bump when prisma/schema.prisma changes so dev hot-reload discards stale clients.
-const PRISMA_SCHEMA_VERSION = 'feature-flags-v2';
+const PRISMA_SCHEMA_VERSION = 'feature-flags-v3';
 
 function createPrismaClient() {
   return new PrismaClient({
@@ -9,19 +9,19 @@ function createPrismaClient() {
   });
 }
 
-export type AppPrismaClient = ReturnType<typeof createPrismaClient>;
+export type AppPrismaClient = PrismaClient;
 
 export type PrismaTransactionClient = Omit<
-  AppPrismaClient,
+  PrismaClient,
   '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
 >;
 
 const globalForPrisma = globalThis as typeof globalThis & {
-  prisma?: AppPrismaClient;
+  prisma?: PrismaClient;
   prismaSchemaVersion?: string;
 };
 
-function getPrismaClient(): AppPrismaClient {
+function getPrismaClient(): PrismaClient {
   if (
     globalForPrisma.prisma &&
     globalForPrisma.prismaSchemaVersion === PRISMA_SCHEMA_VERSION
@@ -39,4 +39,4 @@ function getPrismaClient(): AppPrismaClient {
   return client;
 }
 
-export const prisma = getPrismaClient();
+export const prisma: PrismaClient = getPrismaClient();

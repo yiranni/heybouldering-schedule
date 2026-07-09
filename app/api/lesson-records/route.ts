@@ -3,6 +3,12 @@ import { prisma } from '@/app/lib/prisma';
 import { forbidden, unauthorized } from '@/app/lib/auth';
 import { resolveSalesAccess } from '@/app/lib/salesAccess';
 import { lessonRecordInclude, buildLessonRecordCreateData } from '@/app/lib/lessonRecord.server';
+import {
+  FEATURE_FLAG_ALLOW_DELAY_CREATE_CLASS,
+  isLessonCreateDateAllowed,
+  LESSON_CREATE_DATE_RESTRICTED_ERROR,
+} from '@/app/lib/featureFlags';
+import { getFeatureFlagBoolean } from '@/app/lib/featureFlags.server';
 
 // GET /api/lesson-records - 获取课程记录列表（支持筛选）
 export async function GET(request: NextRequest) {
@@ -86,6 +92,18 @@ export async function POST(request: NextRequest) {
 
     if (!Number.isFinite(studentCount) || studentCount < 1) {
       return NextResponse.json({ error: '人数必须大于等于 1' }, { status: 400 });
+    }
+
+    const allowDelayCreate = await getFeatureFlagBoolean(
+      FEATURE_FLAG_ALLOW_DELAY_CREATE_CLASS,
+      false
+    );
+    const lessonDate = new Date(dateStr);
+    if (Number.isNaN(lessonDate.getTime())) {
+      return NextResponse.json({ error: '上课时间格式无效' }, { status: 400 });
+    }
+    if (!access.isAdmin && !isLessonCreateDateAllowed(lessonDate, allowDelayCreate)) {
+      return NextResponse.json({ error: LESSON_CREATE_DATE_RESTRICTED_ERROR }, { status: 400 });
     }
 
     const lessonRecord = await prisma.lessonRecord.create({
