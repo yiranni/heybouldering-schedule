@@ -219,6 +219,13 @@ model PayrollSettings {
   @@map("payroll_settings")
 }
 
+model FeatureFlag {
+  id    String @id
+  value Json
+
+  @@map("feature_flags")
+}
+
 // 零售产品
 model Product {
   id         String           @id @default(cuid())
