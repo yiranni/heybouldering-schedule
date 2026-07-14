@@ -31,10 +31,13 @@ export function usePayroll() {
         throw new Error(data.error || 'Failed to fetch payroll');
       }
       const data = await response.json();
-      setRows(data.rows || []);
+      const nextRows: PayrollRow[] = data.rows || [];
+      setRows(nextRows);
       setError(null);
+      return nextRows;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
+      return undefined;
     } finally {
       if (!options?.silent) {
         setLoading(false);

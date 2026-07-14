@@ -68,6 +68,7 @@ model Coach {
   lessonRecords   LessonRecord[]
   salesRecords    SalesRecord[]
   payrollRecords  PayrollRecord[]
+  payrollManualHours PayrollManualHours[]
   user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("coaches")
@@ -207,6 +208,22 @@ model PayrollRecord {
   @@map("payroll_records")
   @@unique([month, coachId])
   @@index([month])
+  @@index([coachId])
+}
+
+model PayrollManualHours {
+  id        String   @id @default(cuid())
+  month     String   // YYYY-MM
+  coachId   String
+  dateStr   String   // YYYY-MM-DD
+  startTime String   // HH:mm
+  endTime   String   // HH:mm
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  coach     Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@map("payroll_manual_hours")
+  @@index([month, coachId])
   @@index([coachId])
 }
 

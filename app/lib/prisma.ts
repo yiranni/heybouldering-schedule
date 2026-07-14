@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
 // Bump when prisma/schema.prisma changes so dev hot-reload discards stale clients.
-const PRISMA_SCHEMA_VERSION = 'feature-flags-v3';
+const PRISMA_SCHEMA_VERSION = 'payroll-manual-hours-v1';
 
 function createPrismaClient() {
   return new PrismaClient({

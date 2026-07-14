@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, List, Save, Settings, X } from "lucide-react";
+import { Calendar, Clock, List, Plus, Settings, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import TopNavMenu from "../components/TopNavMenu";
 import UserInfo from "../components/UserInfo";
@@ -16,6 +16,7 @@ import {
   type LessonFeeDetailsResult,
   summarizeLessonSessionsByType,
 } from "../lib/lessonFee";
+import { formatMonthDay } from "../lib/scheduleHours";
 import { LessonType } from "../types";
 
 function formatCurrency(value: number): string {
@@ -34,6 +35,22 @@ type SalesDetailItem = {
 
 type LessonFeeConfigApiItem = LessonFeeConfigDraft & {
   lessonTypeId: string;
+};
+
+type PartTimeHourEntry = {
+  id: string;
+  dateStr: string;
+  startTime: string;
+  endTime: string;
+  hours: number;
+  source: "schedule" | "manual";
+};
+
+type PartTimeHoursDetails = {
+  items: PartTimeHourEntry[];
+  scheduleHours: number;
+  manualHours: number;
+  totalHours: number;
 };
 
 function buildLessonFeeDraftByLessonTypes(
@@ -83,12 +100,11 @@ export default function PayrollPage() {
     month,
     rows,
     loading,
-    saving,
     error,
     changeMonth,
-    updateRow,
-    savePayroll,
     saveSalaryConfig,
+    refreshPayroll,
+    savePayroll,
   } = usePayroll();
   const { lessonTypes, loading: lessonTypesLoading, refreshLessonTypes } = useLessonTypes();
   const partTimeRows = useMemo(
@@ -102,13 +118,23 @@ export default function PayrollPage() {
     const currentYear = new Date().getFullYear();
     return Array.from({ length: 7 }, (_, idx) => currentYear - 3 + idx);
   }, []);
-  const [drawerMode, setDrawerMode] = useState<"sales" | "lessonFee" | null>(null);
+  const [drawerMode, setDrawerMode] = useState<"sales" | "lessonFee" | "partTimeHours" | null>(null);
   const [drawerTitle, setDrawerTitle] = useState("");
+  const [drawerCoachId, setDrawerCoachId] = useState<string | null>(null);
   const [salesDetails, setSalesDetails] = useState<SalesDetailItem[]>([]);
   const [drawerCommissionRate, setDrawerCommissionRate] = useState(0);
   const [lessonFeeDetails, setLessonFeeDetails] = useState<LessonFeeDetailsResult | null>(null);
+  const [partTimeHoursDetails, setPartTimeHoursDetails] = useState<PartTimeHoursDetails | null>(null);
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [drawerError, setDrawerError] = useState<string | null>(null);
+  const [manualHoursPopupOpen, setManualHoursPopupOpen] = useState(false);
+  const [manualHoursSaving, setManualHoursSaving] = useState(false);
+  const [manualHoursError, setManualHoursError] = useState<string | null>(null);
+  const [manualHoursForm, setManualHoursForm] = useState({
+    dateStr: "",
+    startTime: "10:00",
+    endTime: "20:00",
+  });
   const [salaryConfigOpen, setSalaryConfigOpen] = useState(false);
   const [salaryConfigTab, setSalaryConfigTab] = useState<"fulltime" | "parttime" | "lessonFee">("fulltime");
   const [salaryDraft, setSalaryDraft] = useState<Record<string, number>>({});
@@ -136,8 +162,10 @@ export default function PayrollPage() {
     setDrawerTitle(`${coachName} · ${month} 销售明细`);
     setDrawerCommissionRate(salesAmount > 0 ? salesCommission / salesAmount : 0);
     setDrawerMode("sales");
+    setDrawerCoachId(coachId);
     setSalesDetails([]);
     setLessonFeeDetails(null);
+    setPartTimeHoursDetails(null);
     setDrawerError(null);
     setDrawerLoading(true);
     try {
@@ -161,8 +189,10 @@ export default function PayrollPage() {
   const openLessonFeeDetails = async (coachId: string, coachName: string) => {
     setDrawerTitle(`${coachName} · ${month} 课时费明细`);
     setDrawerMode("lessonFee");
+    setDrawerCoachId(coachId);
     setSalesDetails([]);
     setLessonFeeDetails(null);
+    setPartTimeHoursDetails(null);
     setDrawerError(null);
     setDrawerLoading(true);
     try {
@@ -178,9 +208,75 @@ export default function PayrollPage() {
     }
   };
 
+  const openPartTimeHours = async (coachId: string, coachName: string) => {
+    setDrawerTitle(`${coachName} · ${month} 兼职工时`);
+    setDrawerMode("partTimeHours");
+    setDrawerCoachId(coachId);
+    setSalesDetails([]);
+    setLessonFeeDetails(null);
+    setPartTimeHoursDetails(null);
+    setDrawerError(null);
+    setManualHoursPopupOpen(false);
+    setManualHoursError(null);
+    const { startDate } = getMonthDateRange(month);
+    setManualHoursForm({
+      dateStr: startDate,
+      startTime: "10:00",
+      endTime: "20:00",
+    });
+    setDrawerLoading(true);
+    try {
+      const params = new URLSearchParams({ coachId, month });
+      const response = await fetch(`/api/payroll/part-time-hours?${params.toString()}`);
+      if (!response.ok) throw new Error("加载兼职工时失败");
+      const data = (await response.json()) as PartTimeHoursDetails;
+      setPartTimeHoursDetails(data);
+    } catch (err) {
+      setDrawerError(err instanceof Error ? err.message : "加载兼职工时失败");
+    } finally {
+      setDrawerLoading(false);
+    }
+  };
+
+  const saveManualHours = async () => {
+    if (!drawerCoachId) return;
+    setManualHoursSaving(true);
+    setManualHoursError(null);
+    try {
+      const response = await fetch("/api/payroll/part-time-hours", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          month,
+          coachId: drawerCoachId,
+          dateStr: manualHoursForm.dateStr,
+          startTime: manualHoursForm.startTime,
+          endTime: manualHoursForm.endTime,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "保存手动工时失败");
+      }
+      setPartTimeHoursDetails(data as PartTimeHoursDetails);
+      setManualHoursPopupOpen(false);
+      const nextRows = await refreshPayroll(month, { silent: true });
+      if (nextRows) {
+        await savePayroll(nextRows);
+      }
+    } catch (err) {
+      setManualHoursError(err instanceof Error ? err.message : "保存手动工时失败");
+    } finally {
+      setManualHoursSaving(false);
+    }
+  };
+
   const closeDrawer = () => {
     setDrawerMode(null);
+    setDrawerCoachId(null);
     setDrawerError(null);
+    setManualHoursPopupOpen(false);
+    setManualHoursError(null);
   };
 
   const fullTimeRows = useMemo(
@@ -324,21 +420,6 @@ export default function PayrollPage() {
               <Settings className="w-4 h-4" />
               工资配置
             </button>
-            <button
-              onClick={async () => {
-                try {
-                  await savePayroll();
-                  alert("工资数据已保存");
-                } catch {
-                  alert("保存失败");
-                }
-              }}
-              disabled={saving || loading}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-500 disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              {saving ? "保存中..." : "保存"}
-            </button>
             <UserInfo />
           </div>
         </div>
@@ -349,7 +430,7 @@ export default function PayrollPage() {
           <div className="px-6 py-4 border-b border-slate-200">
             <h2 className="text-lg font-semibold text-slate-800">工资计算（按月）</h2>
             <p className="text-sm text-slate-500 mt-1">
-              销售提成与课时费根据当月记录自动计算；全职基本工资与兼职时薪在「工资配置」中维护；兼职基本工资按当月工时自动计算。
+              销售提成与课时费根据当月记录自动计算；全职基本工资与兼职时薪在「工资配置」中维护；兼职工时由班表与手动增加工时合计，保存后自动更新。
             </p>
           </div>
 
@@ -385,20 +466,14 @@ export default function PayrollPage() {
                         <div className="text-xs text-slate-500 mt-0.5">
                           {row.employmentType === "PART_TIME" ? (
                             <span className="inline-flex items-center gap-1">
-                              <span>兼职 · 本月工时</span>
-                              <input
-                                type="number"
-                                value={row.monthHours}
-                                min={0}
-                                step="0.1"
-                                onChange={(e) =>
-                                  updateRow(row.coachId, {
-                                    monthHours: Number(e.target.value || 0),
-                                  })
-                                }
-                                className="w-20 px-1.5 py-0.5 border border-slate-300 rounded text-right text-xs bg-white"
-                              />
-                              <span>h</span>
+                              <span>兼职 · 本月工时 {row.monthHours}h</span>
+                              <button
+                                onClick={() => openPartTimeHours(row.coachId, row.coachName)}
+                                className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700"
+                                title="查看兼职工时明细"
+                              >
+                                <Clock className="w-4 h-4" />
+                              </button>
                             </span>
                           ) : (
                             "全职"
@@ -487,6 +562,44 @@ export default function PayrollPage() {
                 <div className="text-sm text-slate-500">加载中...</div>
               ) : drawerError ? (
                 <div className="text-sm text-red-600">{drawerError}</div>
+              ) : drawerMode === "partTimeHours" ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-slate-600">
+                      班表 {partTimeHoursDetails?.scheduleHours ?? 0}h + 手动{" "}
+                      {partTimeHoursDetails?.manualHours ?? 0}h = 共{" "}
+                      {partTimeHoursDetails?.totalHours ?? 0}h
+                    </div>
+                    <button
+                      onClick={() => {
+                        setManualHoursError(null);
+                        setManualHoursPopupOpen(true);
+                      }}
+                      className="p-1.5 rounded hover:bg-slate-100 text-slate-500 hover:text-emerald-700"
+                      title="手动增加工时"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {!partTimeHoursDetails?.items.length ? (
+                    <div className="text-sm text-slate-400">暂无工时记录</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {partTimeHoursDetails.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700"
+                        >
+                          {formatMonthDay(item.dateStr)}：{item.startTime}-{item.endTime} (共
+                          {item.hours}小时)
+                          {item.source === "manual" && (
+                            <span className="ml-2 text-xs text-amber-600">手动</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : drawerMode === "sales" ? (
                 salesDetails.length === 0 ? (
                   <div className="text-sm text-slate-400">暂无销售记录</div>
@@ -598,6 +711,85 @@ export default function PayrollPage() {
               )}
             </div>
           </aside>
+        </div>
+      )}
+
+      {manualHoursPopupOpen && drawerMode === "partTimeHours" && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-2xl border border-slate-200">
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+              <h3 className="text-base font-semibold text-slate-800">手动增加工时</h3>
+              <button
+                onClick={() => {
+                  setManualHoursPopupOpen(false);
+                  setManualHoursError(null);
+                }}
+                className="p-1 rounded hover:bg-slate-100 text-slate-500"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">日期</label>
+                <input
+                  type="date"
+                  value={manualHoursForm.dateStr}
+                  min={getMonthDateRange(month).startDate}
+                  max={getMonthDateRange(month).endDate}
+                  onChange={(e) =>
+                    setManualHoursForm((prev) => ({ ...prev, dateStr: e.target.value }))
+                  }
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">开始时间</label>
+                  <input
+                    type="time"
+                    value={manualHoursForm.startTime}
+                    onChange={(e) =>
+                      setManualHoursForm((prev) => ({ ...prev, startTime: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">结束时间</label>
+                  <input
+                    type="time"
+                    value={manualHoursForm.endTime}
+                    onChange={(e) =>
+                      setManualHoursForm((prev) => ({ ...prev, endTime: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                  />
+                </div>
+              </div>
+              {manualHoursError && (
+                <div className="text-sm text-red-600">{manualHoursError}</div>
+              )}
+            </div>
+            <div className="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+              <button
+                onClick={() => {
+                  setManualHoursPopupOpen(false);
+                  setManualHoursError(null);
+                }}
+                className="px-4 py-2 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={saveManualHours}
+                disabled={manualHoursSaving || !manualHoursForm.dateStr}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-500 disabled:opacity-50"
+              >
+                {manualHoursSaving ? "保存中..." : "保存"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

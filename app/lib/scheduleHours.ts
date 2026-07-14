@@ -18,6 +18,13 @@ export type ScheduleForHours = {
   isExtended?: boolean;
 };
 
+export type DailyHourEntry = {
+  dateStr: string;
+  startTime: string;
+  endTime: string;
+  hours: number;
+};
+
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
@@ -48,6 +55,39 @@ function mergeRanges(ranges: TimeRange[]): number {
     }
   }
   return merged.reduce((sum, range) => sum + (range.end - range.start), 0);
+}
+
+function mergeRangeList(ranges: TimeRange[]): TimeRange[] {
+  if (ranges.length === 0) return [];
+  const sorted = [...ranges].sort((a, b) => a.start - b.start);
+  const merged: TimeRange[] = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    const current = sorted[i];
+    const last = merged[merged.length - 1];
+    if (current.start <= last.end) {
+      last.end = Math.max(last.end, current.end);
+    } else {
+      merged.push(current);
+    }
+  }
+  return merged;
+}
+
+function minutesToTime(minutes: number): string {
+  const normalized = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  const h = Math.floor(normalized / 60);
+  const m = normalized % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+export function calcHoursFromTimes(startTime: string, endTime: string): number {
+  const range = getDurationRange(startTime, endTime);
+  return round2((range.end - range.start) / 60);
+}
+
+export function formatMonthDay(dateStr: string): string {
+  const [, month, day] = dateStr.split("-").map(Number);
+  return `${month}月${day}日`;
 }
 
 /** 与排班页 calculateStats 保持一致的班次时段解析 */
@@ -135,4 +175,38 @@ export function calcMonthlyHoursByCoach(
   }
 
   return monthHoursByCoach;
+}
+
+export function calcDailyScheduleHourEntriesForCoach(
+  schedules: ScheduleForHours[],
+  storeMap: Map<string, StoreForScheduleHours>,
+  coachId: string
+): DailyHourEntry[] {
+  const byDate = new Map<string, TimeRange[]>();
+
+  for (const schedule of schedules) {
+    if (schedule.coachId !== coachId) continue;
+    const ranges = byDate.get(schedule.dateStr) || [];
+    const store = storeMap.get(schedule.storeId);
+    const { start, end } = resolveScheduleShiftTimes(schedule, store);
+    ranges.push(getDurationRange(start, end));
+    byDate.set(schedule.dateStr, ranges);
+  }
+
+  const entries: DailyHourEntry[] = [];
+  for (const [dateStr, ranges] of byDate.entries()) {
+    const mergedRanges = mergeRangeList(ranges);
+    for (const range of mergedRanges) {
+      entries.push({
+        dateStr,
+        startTime: minutesToTime(range.start),
+        endTime: minutesToTime(range.end),
+        hours: round2((range.end - range.start) / 60),
+      });
+    }
+  }
+
+  return entries.sort(
+    (a, b) => a.dateStr.localeCompare(b.dateStr) || a.startTime.localeCompare(b.startTime)
+  );
 }

@@ -14,6 +14,7 @@ import {
   getLessonRecordMonthDateFilter,
   getMonthDateStrBounds,
 } from "@/app/lib/scheduleHours";
+import { getManualHoursSumByCoach } from "@/app/lib/payrollManualHours.server";
 
 type SalesTotalRow = {
   coachId: string;
@@ -167,6 +168,7 @@ export async function GET(request: NextRequest) {
         : [];
     const storeMap = new Map(stores.map((store) => [store.id, store]));
     const monthHoursByCoach = calcMonthlyHoursByCoach(schedulesInMonth, storeMap);
+    const manualHoursByCoach = await getManualHoursSumByCoach(month);
 
     const recordByCoach = new Map<string, PayrollRecordRow>(
       records.map((r: PayrollRecordRow): [string, PayrollRecordRow] => [r.coachId, r])
@@ -200,13 +202,14 @@ export async function GET(request: NextRequest) {
       coaches.map(async (coach: CoachRow) => {
         const current = recordByCoach.get(coach.id);
         const scheduleHours = round2(monthHoursByCoach.get(coach.id) || 0);
+        const manualHours = round2(manualHoursByCoach.get(coach.id) || 0);
         const hourlyRate = round2(current?.hourlyRate ?? DEFAULT_PART_TIME_HOURLY_RATE);
 
         let monthHours = scheduleHours;
         let basicSalary: number;
 
         if (coach.employmentType === "PART_TIME") {
-          monthHours = scheduleHours;
+          monthHours = round2(scheduleHours + manualHours);
           basicSalary = round2(monthHours * hourlyRate);
         } else {
           // 全职按月薪，支持从上月带入
