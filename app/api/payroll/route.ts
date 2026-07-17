@@ -119,11 +119,14 @@ export async function GET(request: NextRequest) {
       `,
       prisma.$queryRaw<SalesTotalRow[]>`
         SELECT
-          "coachId" AS "coachId",
-          COALESCE(SUM(amount), 0)::float AS total
-        FROM sales_records
-        WHERE "soldAt" >= ${start} AND "soldAt" <= ${end}
-        GROUP BY "coachId"
+          sr."coachId" AS "coachId",
+          COALESCE(SUM(sr.amount), 0)::float AS total
+        FROM sales_records sr
+        LEFT JOIN inventory_transactions it ON it.id = sr."inventoryTransactionId"
+        WHERE sr."soldAt" >= ${start}
+          AND sr."soldAt" <= ${end}
+          AND (sr."inventoryTransactionId" IS NULL OR it.type = 'SALE')
+        GROUP BY sr."coachId"
       `,
       prisma.lessonType.findMany({
         where: { archived: false },
@@ -307,11 +310,15 @@ export async function PUT(request: NextRequest) {
         ? Promise.resolve([] as SalesTotalRow[])
         : prisma.$queryRaw<SalesTotalRow[]>`
             SELECT
-              "coachId" AS "coachId",
-              COALESCE(SUM(amount), 0)::float AS total
-            FROM sales_records
-            WHERE "soldAt" >= ${start} AND "soldAt" <= ${end} AND "coachId" IN (${Prisma.join(coachIds)})
-            GROUP BY "coachId"
+              sr."coachId" AS "coachId",
+              COALESCE(SUM(sr.amount), 0)::float AS total
+            FROM sales_records sr
+            LEFT JOIN inventory_transactions it ON it.id = sr."inventoryTransactionId"
+            WHERE sr."soldAt" >= ${start}
+              AND sr."soldAt" <= ${end}
+              AND sr."coachId" IN (${Prisma.join(coachIds)})
+              AND (sr."inventoryTransactionId" IS NULL OR it.type = 'SALE')
+            GROUP BY sr."coachId"
           `;
     const [rules, salesRows, lessonFeeByCoach] = await Promise.all([
       rulesPromise,

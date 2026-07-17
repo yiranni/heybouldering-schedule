@@ -44,7 +44,7 @@ const inventoryTxInclude = {
 } satisfies Prisma.InventoryTransactionInclude;
 
 export async function listInventoryTransactions(where: Prisma.InventoryTransactionWhereInput) {
-  return db.inventoryTransaction.findMany({
+  const transactions = await db.inventoryTransaction.findMany({
     where,
     include: {
       variant: { include: { product: { select: { id: true, brand: true, name: true } } } },
@@ -54,6 +54,10 @@ export async function listInventoryTransactions(where: Prisma.InventoryTransacti
     orderBy: [{ performedAt: "desc" }, { createdAt: "desc" }],
     take: 500,
   });
+
+  return transactions.map((tx) =>
+    tx.type === "WRITEOFF" ? { ...tx, unitPrice: 0 } : tx
+  );
 }
 
 export async function getVariantStoreStock(variantId: string, storeId: string): Promise<number> {

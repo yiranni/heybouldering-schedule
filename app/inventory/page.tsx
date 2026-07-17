@@ -458,6 +458,7 @@ export default function InventoryPage() {
         getQuantity={getQuantity}
         preselectedProductId={preselectedProduct?.id}
         preselectedVariantId={preselectedVariantId}
+        fixedUnitPrice={0}
         onClose={() => {
           setShowStockSale(false);
           setPreselectedProduct(null);

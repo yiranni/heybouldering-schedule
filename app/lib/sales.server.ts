@@ -1,4 +1,5 @@
 import { prisma } from "@/app/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 const salesRecordInclude = {
   coach: {
@@ -22,10 +23,7 @@ const salesRecordInclude = {
   },
 } as const;
 
-export type SalesRecordWhereInput = {
-  soldAt?: { gte?: Date; lte?: Date };
-  coachId?: string;
-};
+export type SalesRecordWhereInput = Prisma.SalesRecordWhereInput;
 
 type SalesRecordWithRelations = {
   id: string;
@@ -91,11 +89,18 @@ type SalesDb = {
 
 const db = prisma as unknown as SalesDb;
 
+const visibleSalesRecordsWhere: Prisma.SalesRecordWhereInput = {
+  OR: [
+    { inventoryTransactionId: null },
+    { inventoryTransaction: { is: { type: "SALE" } } },
+  ],
+};
+
 export async function listSalesRecords(
   where: SalesRecordWhereInput
 ): Promise<SalesRecordListItem[]> {
   const records = await db.salesRecord.findMany({
-    where,
+    where: { AND: [where, visibleSalesRecordsWhere] },
     include: salesRecordInclude,
     orderBy: [{ soldAt: "desc" }, { createdAt: "desc" }],
   });

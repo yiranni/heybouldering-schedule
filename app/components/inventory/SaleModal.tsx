@@ -13,6 +13,7 @@ type SaleModalProps = {
   getQuantity: (variantId: string, storeId: string) => number;
   preselectedProductId?: string;
   preselectedVariantId?: string;
+  fixedUnitPrice?: number;
   onClose: () => void;
   onSubmit: (data: {
     variantId: string;
@@ -32,6 +33,7 @@ export default function SaleModal({
   getQuantity,
   preselectedProductId,
   preselectedVariantId,
+  fixedUnitPrice,
   onClose,
   onSubmit,
 }: SaleModalProps) {
@@ -47,6 +49,7 @@ export default function SaleModal({
   const activeProducts = products.filter((p) => !p.archived);
   const selectedProduct = activeProducts.find((p) => p.id === productId);
   const activeVariants = selectedProduct?.variants.filter((v) => !v.archived) ?? [];
+  const hasFixedUnitPrice = fixedUnitPrice !== undefined;
 
   const currentStock = variantId && storeId ? getQuantity(variantId, storeId) : null;
   const qty = Number(quantity);
@@ -63,7 +66,7 @@ export default function SaleModal({
     const initVariant = initProduct?.variants.find((v) => v.id === initVariantId);
     setProductId(initProductId);
     setVariantId(initVariantId);
-    setUnitPrice(initVariant ? String(initVariant.price) : "");
+    setUnitPrice(hasFixedUnitPrice ? String(fixedUnitPrice) : initVariant ? String(initVariant.price) : "");
     setStoreId(stores[0]?.id ?? "");
     setQuantity("1");
     setNote("");
@@ -78,7 +81,11 @@ export default function SaleModal({
     if (preselectedVariantId) return;
     const first = activeVariants[0];
     setVariantId(first?.id ?? "");
-    if (first) setUnitPrice(String(first.price));
+    if (hasFixedUnitPrice) {
+      setUnitPrice(String(fixedUnitPrice));
+    } else if (first) {
+      setUnitPrice(String(first.price));
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId, preselectedVariantId]);
 
@@ -92,7 +99,7 @@ export default function SaleModal({
     if (!qty || qty <= 0) { alert("销售数量必须大于 0"); return; }
     if (outOfStock) { alert(`当前库存为 0，无法${title}`); return; }
     if (stockInsufficient) { alert(`库存不足，当前库存 ${currentStock}`); return; }
-    const price = Number(unitPrice);
+    const price = hasFixedUnitPrice ? fixedUnitPrice : Number(unitPrice);
     if (Number.isNaN(price) || price < 0) { alert("请填写有效价格"); return; }
 
     setSaving(true);
@@ -150,7 +157,7 @@ export default function SaleModal({
                 onChange={(e) => {
                   setVariantId(e.target.value);
                   const v = activeVariants.find((v) => v.id === e.target.value);
-                  if (v) setUnitPrice(String(v.price));
+                  if (v && !hasFixedUnitPrice) setUnitPrice(String(v.price));
                 }}
                 disabled={!activeVariants.length}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm disabled:bg-slate-50 disabled:text-slate-500"
@@ -186,7 +193,7 @@ export default function SaleModal({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid gap-3 ${hasFixedUnitPrice ? "grid-cols-1" : "grid-cols-2"}`}>
             <div>
               <label className="text-sm text-slate-600 block mb-1">数量</label>
               <input
@@ -203,17 +210,19 @@ export default function SaleModal({
                 <p className="mt-1 text-xs text-red-500">超出库存 {currentStock}</p>
               )}
             </div>
-            <div>
-              <label className="text-sm text-slate-600 block mb-1">实际售价（元）</label>
-              <input
-                type="number"
-                value={unitPrice}
-                onChange={(e) => setUnitPrice(e.target.value)}
-                min="0"
-                step="0.01"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
-              />
-            </div>
+            {!hasFixedUnitPrice && (
+              <div>
+                <label className="text-sm text-slate-600 block mb-1">实际售价（元）</label>
+                <input
+                  type="number"
+                  value={unitPrice}
+                  onChange={(e) => setUnitPrice(e.target.value)}
+                  min="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
+                />
+              </div>
+            )}
           </div>
 
           <div>

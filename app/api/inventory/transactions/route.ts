@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
   const variantId = String(body?.variantId || "").trim();
   const storeId = String(body?.storeId || "").trim();
   const quantityDelta = Number(body?.quantityDelta);
-  const unitPrice = Number(body?.unitPrice ?? 0);
+  const unitPrice = type === "WRITEOFF" ? 0 : Number(body?.unitPrice ?? 0);
   const note = body?.note ? String(body.note).trim() : null;
   const performedAt = body?.performedAt ? new Date(body.performedAt) : new Date();
 
@@ -132,7 +132,7 @@ export async function POST(request: NextRequest) {
   }
 
   const invTxId = randomUUID();
-  const needsSalesRecord = type === "SALE" || type === "WRITEOFF";
+  const needsSalesRecord = type === "SALE";
 
   let coachId: string | null = null;
   let productCategoryId: string | null = null;
