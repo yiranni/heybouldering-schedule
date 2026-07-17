@@ -182,23 +182,23 @@ export default function InventoryPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      <header className="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-emerald-500 p-2 rounded-lg">
+      <header className="bg-slate-900 text-white p-3 shadow-lg sticky top-0 z-50 sm:p-4">
+        <div className="mx-auto flex max-w-7xl flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="shrink-0 bg-emerald-500 p-2 rounded-lg">
               <Package className="w-6 h-6 text-white" />
             </div>
             <TopNavMenu current="inventory" isAdmin={user?.role === "ADMIN"} />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="mobile-scrollbar -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0">
             {isManager && (
               <button
                 onClick={() => {
                   setEditingProduct(null);
                   setShowProductModal(true);
                 }}
-                className="flex items-center gap-2 bg-slate-600 hover:bg-slate-500 text-white px-3 py-2 rounded-md text-sm font-medium transition-all shadow-lg active:scale-95"
+                className="flex shrink-0 items-center gap-2 rounded-md bg-slate-600 px-3 py-2 text-sm font-medium text-white shadow-lg transition-all hover:bg-slate-500 active:scale-95"
               >
                 <Plus className="w-4 h-4" />
                 新增产品
@@ -209,13 +209,13 @@ export default function InventoryPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-4 md:p-6">
-        <div className="flex gap-1 mb-4 bg-white rounded-lg p-1 shadow-sm w-fit">
+      <main className="mx-auto max-w-7xl p-3 sm:p-4 md:p-6">
+        <div className="mb-4 flex w-full gap-1 rounded-lg bg-white p-1 shadow-sm sm:w-fit">
           {(["stock", "history"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors sm:flex-none ${
                 tab === t
                   ? "bg-emerald-600 text-white"
                   : "text-slate-600 hover:bg-slate-100"
@@ -229,7 +229,7 @@ export default function InventoryPage() {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           {tab === "stock" ? (
             <>
-              <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap gap-3 items-center">
+              <div className="grid grid-cols-1 gap-3 border-b border-slate-100 px-4 py-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                   <input
@@ -237,7 +237,7 @@ export default function InventoryPage() {
                     value={stockSearch}
                     onChange={(e) => setStockSearch(e.target.value)}
                     placeholder="搜索品牌或产品名"
-                    className="pl-8 pr-7 py-1.5 border border-slate-300 rounded text-sm w-44"
+                    className="w-full rounded border border-slate-300 py-2 pl-8 pr-7 text-sm lg:w-44 lg:py-1.5"
                   />
                   {stockSearch && (
                     <button onClick={() => setStockSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -248,7 +248,7 @@ export default function InventoryPage() {
                 <select
                   value={stockBrand}
                   onChange={(e) => setStockBrand(e.target.value)}
-                  className="px-3 py-1.5 border border-slate-300 rounded text-sm"
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm lg:w-auto lg:py-1.5"
                 >
                   <option value="">全部品牌</option>
                   {brands.map((b) => (
@@ -264,7 +264,7 @@ export default function InventoryPage() {
                   />
                   隐藏零库存
                 </label>
-                <span className="text-xs text-slate-400 ml-auto">
+                <span className="text-xs text-slate-400 lg:ml-auto">
                   共 {filteredProducts.length} 个产品
                 </span>
               </div>
@@ -290,7 +290,7 @@ export default function InventoryPage() {
             </>
           ) : (
             <div>
-              <div className="px-4 py-3 border-b border-slate-100 flex flex-wrap gap-3 items-center">
+              <div className="grid grid-cols-1 gap-3 border-b border-slate-100 px-4 py-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
                   <input
@@ -298,7 +298,7 @@ export default function InventoryPage() {
                     value={txSearch}
                     onChange={(e) => setTxSearch(e.target.value)}
                     placeholder="搜索产品名或规格"
-                    className="pl-8 pr-7 py-1.5 border border-slate-300 rounded text-sm w-44"
+                    className="w-full rounded border border-slate-300 py-2 pl-8 pr-7 text-sm lg:w-44 lg:py-1.5"
                   />
                   {txSearch && (
                     <button onClick={() => setTxSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -309,7 +309,7 @@ export default function InventoryPage() {
                 <select
                   value={filters.storeId ?? ""}
                   onChange={(e) => updateFilters({ storeId: e.target.value || undefined })}
-                  className="px-3 py-1.5 border border-slate-300 rounded text-sm"
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm lg:w-auto lg:py-1.5"
                 >
                   <option value="">全部门店</option>
                   {activeStores.map((s) => (
@@ -319,7 +319,7 @@ export default function InventoryPage() {
                 <select
                   value={txPerformer}
                   onChange={(e) => setTxPerformer(e.target.value)}
-                  className="px-3 py-1.5 border border-slate-300 rounded text-sm"
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm lg:w-auto lg:py-1.5"
                 >
                   <option value="">全部操作人</option>
                   {txPerformers.map((p) => (
@@ -331,7 +331,7 @@ export default function InventoryPage() {
                   onChange={(e) =>
                     updateFilters({ type: (e.target.value || undefined) as typeof filters.type })
                   }
-                  className="px-3 py-1.5 border border-slate-300 rounded text-sm"
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm lg:w-auto lg:py-1.5"
                 >
                   <option value="">全部类型</option>
                   <option value="STOCK_IN">入库</option>
@@ -346,14 +346,14 @@ export default function InventoryPage() {
                   type="date"
                   value={filters.startDate ?? ""}
                   onChange={(e) => updateFilters({ startDate: e.target.value || undefined })}
-                  className="px-3 py-1.5 border border-slate-300 rounded text-sm"
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm lg:w-auto lg:py-1.5"
                 />
-                <span className="text-slate-400 text-sm">至</span>
+                <span className="hidden text-slate-400 text-sm lg:inline">至</span>
                 <input
                   type="date"
                   value={filters.endDate ?? ""}
                   onChange={(e) => updateFilters({ endDate: e.target.value || undefined })}
-                  className="px-3 py-1.5 border border-slate-300 rounded text-sm"
+                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm lg:w-auto lg:py-1.5"
                 />
                 {(txSearch || txPerformer || filters.storeId || filters.type || filters.startDate || filters.endDate) && (
                   <button
@@ -368,7 +368,7 @@ export default function InventoryPage() {
                     清除筛选
                   </button>
                 )}
-                <span className="text-xs text-slate-400 ml-auto">
+                <span className="text-xs text-slate-400 lg:ml-auto">
                   {filteredTransactions.length} 条记录
                 </span>
               </div>

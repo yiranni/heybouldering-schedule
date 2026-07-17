@@ -35,10 +35,10 @@ export default function DateRangeModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md m-4">
+    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center">
+      <div className="w-full max-w-md rounded-t-xl bg-white shadow-2xl sm:m-4 sm:rounded-xl">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-slate-200">
+        <div className="flex justify-between items-center border-b border-slate-200 p-5 sm:p-6">
           <div className="flex items-center gap-3">
             <div className="bg-emerald-100 p-2 rounded-lg">
               <Calendar className="w-5 h-5 text-emerald-600" />
@@ -57,7 +57,7 @@ export default function DateRangeModal({
         </div>
 
         {/* Content */}
-        <div className="p-6 space-y-4">
+        <div className="space-y-4 p-5 sm:p-6">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
               开始日期
@@ -90,7 +90,7 @@ export default function DateRangeModal({
         </div>
 
         {/* Actions */}
-        <div className="p-6 border-t border-slate-200 flex gap-3">
+        <div className="flex gap-3 border-t border-slate-200 p-5 sm:p-6">
           <button
             onClick={onClose}
             className="flex-1 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-lg border border-slate-300 font-medium transition-colors"

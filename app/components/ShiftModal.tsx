@@ -22,8 +22,8 @@ export default function ShiftModal({
   if (!slot) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm m-4 animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center">
+      <div className="max-h-[92vh] w-full max-w-sm rounded-t-xl bg-white p-5 shadow-2xl animate-in fade-in zoom-in duration-200 sm:m-4 sm:rounded-xl sm:p-6">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold text-slate-800">
             调整排班: {slot.date.slice(5)} {slot.shiftName || (slot.type === 'MORNING' ? '早班' : '晚班')}
@@ -36,7 +36,7 @@ export default function ShiftModal({
           </button>
         </div>
 
-        <div className="space-y-2 max-h-[400px] overflow-y-auto">
+        <div className="space-y-2 max-h-[70vh] overflow-y-auto sm:max-h-[400px]">
           {coaches.map((coach) => {
             // 检查该教练是否已经在当前班次
             const isAssigned = schedules.some((s) => {

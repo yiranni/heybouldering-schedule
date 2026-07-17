@@ -35,13 +35,13 @@ export default function TopNavMenu({ current, isAdmin = false }: TopNavMenuProps
   const currentItem = visibleItems.find((item) => item.id === current) || visibleItems[0];
 
   return (
-    <div className="flex items-center gap-2">
-      <h1 className="text-xl font-bold tracking-tight">嘿抱工作后台</h1>
-      <span className="text-slate-400">·</span>
+    <div className="flex min-w-0 items-center gap-2">
+      <h1 className="truncate text-base font-bold tracking-tight sm:text-xl">嘿抱工作后台</h1>
+      <span className="hidden text-slate-400 sm:inline">·</span>
       <div className="relative" ref={ref}>
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex items-center gap-1 text-lg font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
+          className="flex items-center gap-1 whitespace-nowrap text-base font-medium text-emerald-400 hover:text-emerald-300 transition-colors sm:text-lg"
         >
           {currentItem.label}
           <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />

@@ -10,10 +10,10 @@ export default function UserInfo() {
   const displayName = user.name?.trim() || user.accountId;
 
   return (
-    <div className="flex items-center gap-2 shrink-0">
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700">
+    <div className="flex min-w-0 shrink-0 items-center gap-1.5 sm:gap-2">
+      <div className="flex min-w-0 items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1.5 sm:px-3">
         <User className="w-4 h-4 text-slate-400 shrink-0" />
-        <span className="font-medium text-white truncate max-w-[160px]">
+        <span className="max-w-[96px] truncate font-medium text-white sm:max-w-[160px]">
           {displayName}
         </span>
       </div>

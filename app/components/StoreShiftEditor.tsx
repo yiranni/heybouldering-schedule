@@ -203,7 +203,7 @@ export default function StoreShiftEditor({ shifts, onChange }: StoreShiftEditorP
                   </div>
 
                   {/* 时间段 */}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div>
                       <label className="text-[10px] text-slate-500 mb-0.5 block">开始时间</label>
                       <input
@@ -227,7 +227,7 @@ export default function StoreShiftEditor({ shifts, onChange }: StoreShiftEditorP
                   </div>
 
                   {/* 教练人数配置 */}
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <div>
                       <label className="text-[10px] text-slate-500 mb-0.5 block">最少教练数</label>
                       <input

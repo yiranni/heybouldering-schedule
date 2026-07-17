@@ -269,19 +269,19 @@ export default function LessonsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      <header className="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div className="bg-emerald-500 p-2 rounded-lg">
+      <header className="bg-slate-900 text-white p-3 shadow-lg sticky top-0 z-40 sm:p-4">
+        <div className="mx-auto flex max-w-7xl flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="shrink-0 bg-emerald-500 p-2 rounded-lg">
               <Calendar className="w-6 h-6 text-white" />
             </div>
             <TopNavMenu current="lessons" isAdmin={isAdmin} />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="mobile-scrollbar -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0">
             {isAdmin && (
               <button
                 onClick={() => setShowTypeModal(true)}
-                className="px-3 py-2 rounded-md bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center gap-2"
+                className="flex shrink-0 items-center gap-2 rounded-md bg-slate-100 px-3 py-2 text-slate-700 hover:bg-slate-200"
               >
                 <Settings className="w-4 h-4" />
                 课程类型配置
@@ -289,7 +289,7 @@ export default function LessonsPage() {
             )}
             <button
               onClick={openCreateModal}
-              className="px-4 py-2 rounded-md bg-emerald-600 text-white hover:bg-emerald-500 flex items-center gap-2"
+              className="flex shrink-0 items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-white hover:bg-emerald-500 sm:px-4"
             >
               <Plus className="w-4 h-4" />
               新增课程记录
@@ -299,32 +299,32 @@ export default function LessonsPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-4 md:p-6">
+      <main className="mx-auto max-w-7xl p-3 sm:p-4 md:p-6">
         <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
+          <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white px-4 py-4 sm:px-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
                 <h2 className="text-lg font-semibold text-slate-800">课程记录</h2>
                 <p className="text-sm text-slate-500">共 {sortedRecords.length} 条</p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center">
                 <input
                   type="date"
                   value={filters.startDate || ""}
                   onChange={(e) => updateFilters({ ...filters, startDate: e.target.value || undefined })}
-                  className="px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm lg:w-auto lg:py-1.5"
                 />
                 <input
                   type="date"
                   value={filters.endDate || ""}
                   onChange={(e) => updateFilters({ ...filters, endDate: e.target.value || undefined })}
-                  className="px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm lg:w-auto lg:py-1.5"
                 />
                 {isAdmin && (
                   <select
                     value={filters.coachId || ""}
                     onChange={(e) => updateFilters({ ...filters, coachId: e.target.value || undefined })}
-                    className="px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                    className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm lg:w-auto lg:py-1.5"
                   >
                     <option value="">全部教练</option>
                     {coaches.map((coach) => (
@@ -337,7 +337,7 @@ export default function LessonsPage() {
                 <select
                   value={lessonTypeFilter || ""}
                   onChange={(e) => setLessonTypeFilter(e.target.value || undefined)}
-                  className="px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm lg:w-auto lg:py-1.5"
                 >
                   <option value="">全部课程类型</option>
                   {lessonTypes.map((lt) => (
@@ -349,7 +349,7 @@ export default function LessonsPage() {
                 <select
                   value={storeFilter || ""}
                   onChange={(e) => setStoreFilter(e.target.value || undefined)}
-                  className="px-3 py-1.5 border border-slate-300 rounded-md text-sm"
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm lg:w-auto lg:py-1.5"
                 >
                   <option value="">全部上课地点</option>
                   <option value={EMPTY_STORE_FILTER}>未填写地点</option>
@@ -376,7 +376,7 @@ export default function LessonsPage() {
             />
           )}
 
-          <table className="w-full">
+          <table className="hidden w-full md:table">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">教练</th>
@@ -427,12 +427,63 @@ export default function LessonsPage() {
               )}
             </tbody>
           </table>
+
+          <div className="divide-y divide-slate-100 md:hidden">
+            {loading ? (
+              <div className="px-4 py-10 text-center text-slate-500">加载中...</div>
+            ) : sortedRecords.length === 0 ? (
+              <div className="px-4 py-10 text-center text-slate-400">暂无课程记录</div>
+            ) : (
+              sortedRecords.map((record) => (
+                <div key={record.id} className="space-y-3 px-4 py-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-medium text-slate-800">{record.lessonType?.name || "-"}</div>
+                      <div className="mt-1 text-sm text-slate-500">
+                        {new Date(record.dateStr).toLocaleString("zh-CN")}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        onClick={() => openEditModal(record)}
+                        className="p-2 rounded hover:bg-slate-100 text-slate-600"
+                        title="编辑"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteRecord(record.id)}
+                        className="p-2 rounded hover:bg-red-50 text-red-600"
+                        title="删除"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <div className="text-xs text-slate-400">教练</div>
+                      <div className="text-slate-700">{record.coach?.name || "-"}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-400">人数</div>
+                      <div className="text-slate-700">{record.studentCount || 1}</div>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="text-xs text-slate-400">上课地点</div>
+                      <div className="text-slate-700">{record.store?.name || "未填写"}</div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </main>
 
       {showRecordModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-lg bg-white rounded-xl border border-slate-200 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center p-0 sm:items-center sm:p-4">
+          <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-xl border border-slate-200 bg-white shadow-2xl sm:rounded-xl">
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
               <h3 className="text-base font-semibold text-slate-800">
                 {recordForm.id ? "编辑课程记录" : "新增课程记录"}
@@ -441,7 +492,7 @@ export default function LessonsPage() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="px-5 py-4 space-y-3">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
               {isAdmin && (
                 <div>
                   <label className="block text-sm text-slate-600 mb-1">教练</label>
@@ -537,15 +588,15 @@ export default function LessonsPage() {
       )}
 
       {showTypeModal && isAdmin && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-          <div className="w-full max-w-xl bg-white rounded-xl border border-slate-200 shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center p-0 sm:items-center sm:p-4">
+          <div className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-t-xl border border-slate-200 bg-white shadow-2xl sm:rounded-xl">
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
               <h3 className="text-base font-semibold text-slate-800">课程类型配置</h3>
               <button onClick={() => setShowTypeModal(false)} className="p-1 rounded hover:bg-slate-100 text-slate-500">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="px-5 py-4 space-y-4">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
               <div className="space-y-2 max-h-[50vh] overflow-y-auto">
                 {lessonTypes.map((type) => (
                   <div key={type.id} className="flex items-center gap-2 border border-slate-200 rounded-md p-2">
@@ -599,4 +650,3 @@ export default function LessonsPage() {
     </div>
   );
 }
-

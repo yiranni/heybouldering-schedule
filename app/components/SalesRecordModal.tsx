@@ -75,12 +75,12 @@ export default function SalesRecordModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-xl rounded-xl bg-white shadow-2xl">
-        <div className="px-6 py-4 border-b border-slate-200">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
+      <div className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-t-xl bg-white shadow-2xl sm:rounded-xl">
+        <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
           <h3 className="text-lg font-semibold text-slate-800">新增销售记录</h3>
         </div>
-        <div className="px-6 py-5 space-y-4">
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
           {canSelectCoach && (
             <div>
               <label className="text-sm text-slate-600 block mb-1">教练</label>
@@ -159,7 +159,7 @@ export default function SalesRecordModal({
             />
           </div>
         </div>
-        <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-5 py-4 sm:px-6">
           <button
             onClick={onClose}
             className="px-4 py-2 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50"

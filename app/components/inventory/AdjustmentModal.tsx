@@ -159,16 +159,16 @@ export default function AdjustmentModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl">
-        <div className="px-6 py-4 border-b border-slate-200">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
+      <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-xl bg-white shadow-2xl sm:rounded-xl">
+        <div className="px-5 py-4 border-b border-slate-200 sm:px-6">
           <h3 className="text-lg font-semibold text-slate-800">调货</h3>
         </div>
 
-        <div className="px-6 py-5 space-y-4">
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 sm:px-6">
           <div>
             <label className="text-sm text-slate-600 block mb-2">调货类型</label>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
               {subtypes.map((s) => (
                 <button
                   key={s.id}
@@ -225,7 +225,7 @@ export default function AdjustmentModal({
           </div>
 
           {subtype === "transfer" ? (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="text-sm text-slate-600">转出门店</label>
@@ -347,7 +347,7 @@ export default function AdjustmentModal({
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
+        <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4 sm:px-6">
           <button
             onClick={onClose}
             className="px-4 py-2 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50 text-sm"

@@ -483,8 +483,8 @@ export default function ExportLessonModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center">
+      <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-xl bg-white shadow-2xl sm:mx-4 sm:rounded-xl">
         {/* Header */}
         <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-6 py-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -500,7 +500,7 @@ export default function ExportLessonModal({
         </div>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="flex-1 overflow-y-auto p-5 sm:p-6">
           {/* 日期范围显示 */}
           <div className="mb-4 p-3 bg-slate-50 rounded-lg">
             <p className="text-sm text-slate-600">
@@ -595,7 +595,7 @@ export default function ExportLessonModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-slate-50 flex justify-end gap-3">
+        <div className="flex justify-end gap-3 bg-slate-50 px-5 py-4 sm:px-6">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 transition-colors"
@@ -624,4 +624,3 @@ export default function ExportLessonModal({
     </div>
   );
 }
-

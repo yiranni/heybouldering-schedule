@@ -70,7 +70,111 @@ export default function InventoryTable({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div>
+      <div className="divide-y divide-slate-100 md:hidden">
+        {products.map((product) => {
+          const activeVariants = product.variants.filter((v) => !v.archived);
+          const isOpen = expanded.has(product.id);
+          const isSingleVariant = activeVariants.length <= 1;
+          const singleVariant = isSingleVariant ? activeVariants[0] : null;
+          const total = activeVariants.reduce(
+            (sum, v) => sum + stores.reduce((s2, s) => s2 + getStock(v.id, s.id), 0),
+            0
+          );
+
+          return (
+            <div key={product.id} className="px-4 py-4">
+              <div className="flex items-start justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={isSingleVariant ? undefined : () => toggle(product.id)}
+                  className="min-w-0 flex-1 text-left"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    {!isSingleVariant && (
+                      isOpen ? <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" /> : <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+                    )}
+                    <div className="min-w-0">
+                      <div className="truncate font-medium text-slate-800">{product.name}</div>
+                      <div className="text-xs text-slate-500">{product.brand}</div>
+                    </div>
+                  </div>
+                </button>
+                <div className="shrink-0 text-right">
+                  <div className="text-xs text-slate-400">合计</div>
+                  <div className="font-semibold text-slate-800">{total}</div>
+                </div>
+              </div>
+
+              {singleVariant && (
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <div className="text-xs text-slate-400">售价</div>
+                    <div className="text-slate-700">¥{singleVariant.price.toFixed(2)}</div>
+                  </div>
+                  {stores.map((s) => (
+                    <div key={s.id}>
+                      <div className="text-xs text-slate-400">{s.name}</div>
+                      <div className="text-slate-700">{getStock(singleVariant.id, s.id)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!isSingleVariant && isOpen && (
+                <div className="mt-3 space-y-3">
+                  {activeVariants.map((variant) => (
+                    <div key={variant.id} className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="font-medium text-slate-700">{variant.spec}</div>
+                        <div className="text-sm text-slate-600">¥{variant.price.toFixed(2)}</div>
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-sm">
+                        {stores.map((s) => (
+                          <div key={s.id}>
+                            <div className="text-xs text-slate-400">{s.name}</div>
+                            <div className="text-slate-700">{getStock(variant.id, s.id)}</div>
+                          </div>
+                        ))}
+                        <div>
+                          <div className="text-xs text-slate-400">合计</div>
+                          <div className="font-medium text-slate-800">{getTotalStock(variant.id)}</div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex flex-wrap justify-end gap-1">
+                        <button onClick={() => onRetailSale(product, variant.id)} className="rounded px-2 py-1.5 text-xs text-emerald-700 bg-emerald-50">售卖</button>
+                        {isManager && onStockSale && <button onClick={() => onStockSale(product, variant.id)} className="rounded px-2 py-1.5 text-xs text-purple-700 bg-purple-50">销货</button>}
+                        {isManager && <button onClick={() => onStockIn(product, variant.id)} className="rounded px-2 py-1.5 text-xs text-blue-700 bg-blue-50">入库</button>}
+                        {isManager && <button onClick={() => onAdjust(product, variant.id)} className="rounded px-2 py-1.5 text-xs text-orange-700 bg-orange-50">调货</button>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-3 flex flex-wrap justify-end gap-1">
+                <button onClick={() => onRetailSale(product, singleVariant?.id)} className="rounded px-2 py-1.5 text-xs text-emerald-700 bg-emerald-50">售卖</button>
+                {isManager && onStockSale && <button onClick={() => onStockSale(product, singleVariant?.id)} className="rounded px-2 py-1.5 text-xs text-purple-700 bg-purple-50">销货</button>}
+                {isManager && <button onClick={() => onStockIn(product, singleVariant?.id)} className="rounded px-2 py-1.5 text-xs text-blue-700 bg-blue-50">入库</button>}
+                {isManager && <button onClick={() => onAdjust(product, singleVariant?.id)} className="rounded px-2 py-1.5 text-xs text-orange-700 bg-orange-50">调货</button>}
+                {isManager && <button onClick={() => onEdit(product)} className="rounded px-2 py-1.5 text-xs text-slate-700 bg-slate-100">编辑</button>}
+                {isManager && (
+                  <button
+                    onClick={() => {
+                      if (confirm(`确认归档产品「${product.name}」？`)) onArchive(product);
+                    }}
+                    className="rounded px-2 py-1.5 text-xs text-red-700 bg-red-50"
+                  >
+                    归档
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+    <div className="hidden overflow-x-auto md:block">
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-slate-100 text-slate-600">
@@ -274,6 +378,7 @@ export default function InventoryTable({
           })}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

@@ -68,16 +68,16 @@ export default function SalesAnalytics({
   return (
     <div className={`grid grid-cols-1 ${hideCoachBarChart ? '' : 'xl:grid-cols-2'} gap-4`}>
       {!hideCoachBarChart && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-3 sm:p-4">
           <h3 className="text-base font-semibold text-slate-800 mb-3">各教练销售额</h3>
-          <div className="h-72">
+          <div className="h-64 sm:h-72">
             {coachBarData.length === 0 ? (
               <div className="h-full flex items-center justify-center text-sm text-slate-400">
                 暂无数据
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={coachBarData} margin={{ top: 8, right: 8, left: 8, bottom: 36 }}>
+                <BarChart data={coachBarData} margin={{ top: 8, right: 4, left: -12, bottom: 36 }}>
                   <XAxis
                     dataKey="coachName"
                     angle={-20}
@@ -86,7 +86,7 @@ export default function SalesAnalytics({
                     height={48}
                     tick={{ fontSize: 12 }}
                   />
-                  <YAxis tickFormatter={(value: number) => `¥${Number(value).toFixed(0)}`} width={70} />
+                  <YAxis tickFormatter={(value: number) => `¥${Number(value).toFixed(0)}`} width={56} tick={{ fontSize: 11 }} />
                   <Tooltip
                     content={({ active, payload, label }) => {
                       if (!active || !payload || payload.length === 0) return null;
@@ -111,9 +111,9 @@ export default function SalesAnalytics({
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-3 sm:p-4">
         <h3 className="text-base font-semibold text-slate-800 mb-3">各品类销售额分布</h3>
-        <div className="h-72">
+        <div className="h-64 sm:h-72">
           {pieData.length === 0 ? (
             <div className="h-full flex items-center justify-center text-sm text-slate-400">暂无数据</div>
           ) : (
@@ -125,7 +125,7 @@ export default function SalesAnalytics({
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  outerRadius={95}
+                  outerRadius="72%"
                   label={({ value }) => Number(value).toFixed(2)}
                 >
                   {pieData.map((entry, index) => (

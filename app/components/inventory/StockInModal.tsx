@@ -205,13 +205,13 @@ export default function StockInModal({
   })();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white shadow-2xl flex flex-col max-h-[90vh]">
-        <div className="px-6 py-4 border-b border-slate-200 shrink-0">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
+      <div className="flex max-h-[92vh] w-full max-w-lg flex-col rounded-t-xl bg-white shadow-2xl sm:rounded-xl">
+        <div className="shrink-0 border-b border-slate-200 px-5 py-4 sm:px-6">
           <h3 className="text-lg font-semibold text-slate-800">入库</h3>
         </div>
 
-        <div className="px-6 py-5 space-y-4 overflow-y-auto">
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
           <div>
             <label className="text-sm text-slate-600 block mb-1">产品</label>
             <select
@@ -243,7 +243,7 @@ export default function StockInModal({
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-col gap-2 mb-2 sm:flex-row sm:items-center sm:justify-between">
               <label className="text-sm text-slate-600">
                 各规格入库数量
                 <span className="text-slate-400 font-normal ml-1">（留空表示不入库）</span>
@@ -260,8 +260,8 @@ export default function StockInModal({
               )}
             </div>
 
-            <div className="border border-slate-200 rounded-md overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="mobile-scrollbar overflow-x-auto rounded-md border border-slate-200">
+              <table className="w-full min-w-[480px] text-sm">
                 <thead>
                   <tr className="bg-slate-50 text-slate-500 text-xs">
                     <th className="text-left px-3 py-2 font-medium">规格</th>
@@ -385,7 +385,7 @@ export default function StockInModal({
           </div>
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2 shrink-0">
+        <div className="flex shrink-0 justify-end gap-2 border-t border-slate-200 px-5 py-4 sm:px-6">
           <button
             onClick={onClose}
             className="px-4 py-2 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50 text-sm"

@@ -55,7 +55,9 @@ export default function ScheduleCalendar({
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="mobile-scrollbar overflow-x-auto">
+        <div className="min-w-[920px]">
       {/* Date Header Row */}
       <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-700 to-slate-600">
         <div className="grid grid-cols-8 gap-px bg-slate-500">
@@ -199,6 +201,8 @@ export default function ScheduleCalendar({
             })}
           </div>
         ))}
+      </div>
+        </div>
       </div>
     </div>
   );

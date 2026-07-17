@@ -424,16 +424,16 @@ export default function RockGymScheduler() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      <header className="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-emerald-500 p-2 rounded-lg">
+      <header className="bg-slate-900 text-white p-3 shadow-lg sticky top-0 z-50 sm:p-4">
+        <div className="mx-auto flex max-w-7xl flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="shrink-0 rounded-lg bg-emerald-500 p-2">
               <Calendar className="w-6 h-6 text-white" />
             </div>
             <TopNavMenu current="schedule" isAdmin={canEdit} />
           </div>
 
-          <div className="flex items-center gap-4 bg-slate-800 p-1.5 rounded-lg border border-slate-700">
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-700 bg-slate-800 p-1.5 sm:justify-center sm:gap-4">
             <button
               onClick={() => setCurrentDate(addDays(currentDate, -7))}
               className="p-2 hover:bg-slate-700 rounded-md transition-colors"
@@ -451,12 +451,12 @@ export default function RockGymScheduler() {
             </button>
           </div>
 
-          <div className="flex gap-2">
+          <div className="mobile-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0">
             {canEdit && (
               <div className="relative">
                 <button
                   onClick={() => setShowScheduleDropdown(!showScheduleDropdown)}
-                  className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-md font-medium transition-all shadow-lg active:scale-95"
+                  className="flex shrink-0 items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 font-medium text-white shadow-lg transition-all hover:bg-emerald-500 active:scale-95 sm:px-4"
                 >
                   <RefreshCw className="w-4 h-4" />
                   开始排班
@@ -494,7 +494,7 @@ export default function RockGymScheduler() {
               <button
                 onClick={handleSaveSchedule}
                 disabled={isSaving}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md font-medium transition-all shadow-lg active:scale-95"
+                className="flex shrink-0 items-center gap-2 rounded-md bg-blue-600 px-3 py-2 font-medium text-white shadow-lg transition-all hover:bg-blue-500 active:scale-95 disabled:cursor-not-allowed disabled:bg-blue-400 sm:px-4"
               >
                 <Save className="w-4 h-4" />
                 {isSaving ? "保存中..." : "保存排班"}
@@ -503,7 +503,7 @@ export default function RockGymScheduler() {
             <div className="relative">
               <button
                 onClick={() => setShowExportDropdown(!showExportDropdown)}
-                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-md font-medium transition-all shadow-lg active:scale-95"
+                className="flex shrink-0 items-center gap-2 rounded-md bg-purple-600 px-3 py-2 font-medium text-white shadow-lg transition-all hover:bg-purple-500 active:scale-95 sm:px-4"
                 title="导出"
               >
                 <Download className="w-4 h-4" />
@@ -541,7 +541,7 @@ export default function RockGymScheduler() {
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <main className="mx-auto grid max-w-[1600px] grid-cols-1 gap-4 p-3 sm:p-4 md:p-6 lg:grid-cols-5 lg:gap-6">
         {canEdit && (
           <div className="space-y-6 lg:col-span-1">
             <WeeklyStats

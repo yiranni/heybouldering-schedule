@@ -195,15 +195,15 @@ export default function ProductModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-2xl rounded-xl bg-white shadow-2xl max-h-[90vh] flex flex-col">
-        <div className="px-6 py-4 border-b border-slate-200">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4">
+      <div className="flex max-h-[92vh] w-full max-w-2xl flex-col rounded-t-xl bg-white shadow-2xl sm:rounded-xl">
+        <div className="border-b border-slate-200 px-5 py-4 sm:px-6">
           <h3 className="text-lg font-semibold text-slate-800">
             {product ? "编辑产品" : "新增产品"}
           </h3>
         </div>
 
-        <div className="px-6 py-5 space-y-4 overflow-y-auto flex-1">
+        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-6">
           <div>
             <label className="text-sm text-slate-600 block mb-1">种类</label>
             <select
@@ -224,7 +224,7 @@ export default function ProductModal({
               )}
             </select>
             {canManageCategories && showNewCategory && (
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
                 <input
                   type="text"
                   value={newCategoryName}
@@ -243,7 +243,7 @@ export default function ProductModal({
               </div>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="text-sm text-slate-600 block mb-1">品牌</label>
               <input
@@ -285,11 +285,11 @@ export default function ProductModal({
             </div>
           ) : (
             <div>
-              <div className="flex items-center justify-between mb-2">
+              <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <label className="text-sm font-medium text-slate-700">
                   规格列表
                 </label>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="text-xs text-slate-500">批量设价：</span>
                   <input
                     type="number"
@@ -312,7 +312,7 @@ export default function ProductModal({
 
               <div className="space-y-2">
                 {variants.map((v, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
+                  <div key={idx} className="grid grid-cols-[1fr_auto] gap-2 sm:flex sm:items-center">
                     <input
                       type="text"
                       value={v.spec}
@@ -320,7 +320,7 @@ export default function ProductModal({
                         setVariantField(idx, "spec", e.target.value)
                       }
                       placeholder="规格名称（如 39码 / 大包）"
-                      className="flex-1 px-3 py-2 border border-slate-300 rounded-md text-sm"
+                      className="col-span-2 w-full px-3 py-2 border border-slate-300 rounded-md text-sm sm:col-span-1 sm:flex-1"
                     />
                     <input
                       type="number"
@@ -331,7 +331,7 @@ export default function ProductModal({
                       placeholder="单价（元）"
                       min="0"
                       step="0.01"
-                      className="w-32 px-3 py-2 border border-slate-300 rounded-md text-sm"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm sm:w-32"
                     />
                     <button
                       type="button"
@@ -357,7 +357,7 @@ export default function ProductModal({
           </button>
         </div>
 
-        <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2">
+        <div className="flex justify-end gap-2 border-t border-slate-200 px-5 py-4 sm:px-6">
           <button
             onClick={onClose}
             className="px-4 py-2 border border-slate-300 rounded-md text-slate-700 hover:bg-slate-50 text-sm"

@@ -44,10 +44,10 @@ export default function SalesPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      <header className="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-emerald-500 p-2 rounded-lg">
+      <header className="bg-slate-900 text-white p-3 shadow-lg sticky top-0 z-50 sm:p-4">
+        <div className="mx-auto flex max-w-7xl flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="shrink-0 bg-emerald-500 p-2 rounded-lg">
               <Calendar className="w-6 h-6 text-white" />
             </div>
             <TopNavMenu current="sales" isAdmin={isAdmin} />
@@ -56,7 +56,7 @@ export default function SalesPage() {
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto p-4 md:p-6 space-y-4">
+      <main className="mx-auto max-w-[1600px] space-y-4 p-3 sm:p-4 md:p-6">
         {isAdmin && (
           <CommissionRuleList
             rules={commissionRules}

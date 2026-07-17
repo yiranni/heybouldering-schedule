@@ -378,15 +378,15 @@ export default function PayrollPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      <header className="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-emerald-500 p-2 rounded-lg">
+      <header className="bg-slate-900 text-white p-3 shadow-lg sticky top-0 z-50 sm:p-4">
+        <div className="mx-auto flex max-w-7xl flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="shrink-0 bg-emerald-500 p-2 rounded-lg">
               <Calendar className="w-6 h-6 text-white" />
             </div>
             <TopNavMenu current="payroll" isAdmin />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="mobile-scrollbar -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0">
             <div className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1.5">
               <select
                 value={selectedYear}
@@ -415,7 +415,7 @@ export default function PayrollPage() {
             </div>
             <button
               onClick={openSalaryConfig}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-md hover:bg-slate-200"
+              className="flex shrink-0 items-center gap-2 rounded-md bg-slate-100 px-3 py-2 text-slate-700 hover:bg-slate-200 sm:px-4"
             >
               <Settings className="w-4 h-4" />
               工资配置
@@ -425,16 +425,16 @@ export default function PayrollPage() {
         </div>
       </header>
 
-      <main className="max-w-[1400px] mx-auto p-4 md:p-6 space-y-4">
+      <main className="mx-auto max-w-[1400px] space-y-4 p-3 sm:p-4 md:p-6">
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-200">
+          <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
             <h2 className="text-lg font-semibold text-slate-800">工资计算（按月）</h2>
             <p className="text-sm text-slate-500 mt-1">
               销售提成与课时费根据当月记录自动计算；全职基本工资与兼职时薪在「工资配置」中维护；兼职工时由班表与手动增加工时合计，保存后自动更新。
             </p>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
@@ -535,6 +535,77 @@ export default function PayrollPage() {
               </tfoot>
             </table>
           </div>
+
+          <div className="divide-y divide-slate-100 md:hidden">
+            {loading ? (
+              <div className="px-4 py-10 text-center text-slate-500">加载中...</div>
+            ) : rows.length === 0 ? (
+              <div className="px-4 py-10 text-center text-slate-400">暂无可计算的教练数据</div>
+            ) : (
+              <>
+                {rows.map((row) => (
+                  <div key={row.coachId} className="space-y-3 px-4 py-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-medium text-slate-800">{row.coachName}</div>
+                        <div className="mt-0.5 text-xs text-slate-500">
+                          {row.employmentType === "PART_TIME" ? `兼职 · 本月工时 ${row.monthHours}h` : "全职"}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xs text-slate-400">总工资</div>
+                        <div className="font-semibold text-emerald-700">{formatCurrency(row.totalSalary)}</div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <div className="text-xs text-slate-400">基本工资</div>
+                        <div className="text-slate-800">{formatCurrency(row.basicSalary)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-400">销售提成</div>
+                        <button
+                          onClick={() =>
+                            openSalesDetails(row.coachId, row.coachName, row.salesAmount, row.salesCommission)
+                          }
+                          className="inline-flex items-center gap-1 text-slate-800"
+                        >
+                          {formatCurrency(row.salesCommission)}
+                          <List className="h-3.5 w-3.5 text-slate-400" />
+                        </button>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-400">课时费</div>
+                        <button
+                          onClick={() => openLessonFeeDetails(row.coachId, row.coachName)}
+                          className="inline-flex items-center gap-1 text-slate-800"
+                        >
+                          {formatCurrency(row.lessonFee)}
+                          <List className="h-3.5 w-3.5 text-slate-400" />
+                        </button>
+                      </div>
+                      {row.employmentType === "PART_TIME" && (
+                        <div>
+                          <div className="text-xs text-slate-400">工时明细</div>
+                          <button
+                            onClick={() => openPartTimeHours(row.coachId, row.coachName)}
+                            className="inline-flex items-center gap-1 text-slate-800"
+                          >
+                            {row.monthHours}h
+                            <Clock className="h-3.5 w-3.5 text-slate-400" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between bg-slate-50 px-4 py-3">
+                  <span className="text-sm font-semibold text-slate-700">总人工成本</span>
+                  <span className="text-sm font-bold text-emerald-700">{formatCurrency(totals.totalLaborCost)}</span>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {error && (
@@ -604,7 +675,7 @@ export default function PayrollPage() {
                 salesDetails.length === 0 ? (
                   <div className="text-sm text-slate-400">暂无销售记录</div>
                 ) : (
-                  <div className="overflow-x-auto border border-slate-200 rounded-md">
+                  <div className="mobile-scrollbar overflow-x-auto border border-slate-200 rounded-md">
                     <table className="w-full text-sm">
                       <thead className="bg-slate-50">
                         <tr>
@@ -662,7 +733,7 @@ export default function PayrollPage() {
                       </div>
                     </div>
                   )}
-                  <div className="overflow-x-auto border border-slate-200 rounded-md">
+                  <div className="mobile-scrollbar overflow-x-auto border border-slate-200 rounded-md">
                     <table className="w-full text-sm">
                       <thead className="bg-slate-50">
                         <tr>
@@ -715,8 +786,8 @@ export default function PayrollPage() {
       )}
 
       {manualHoursPopupOpen && drawerMode === "partTimeHours" && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white shadow-2xl border border-slate-200">
+        <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+          <div className="w-full max-w-md rounded-t-xl bg-white shadow-2xl border border-slate-200 sm:rounded-xl">
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
               <h3 className="text-base font-semibold text-slate-800">手动增加工时</h3>
               <button
@@ -743,7 +814,7 @@ export default function PayrollPage() {
                   className="w-full px-3 py-2 border border-slate-300 rounded-md text-sm"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">开始时间</label>
                   <input
@@ -794,8 +865,8 @@ export default function PayrollPage() {
       )}
 
       {salaryConfigOpen && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-xl rounded-xl bg-white shadow-2xl border border-slate-200">
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
+          <div className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-t-xl bg-white shadow-2xl border border-slate-200 sm:rounded-xl">
             <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
               <h3 className="text-base font-semibold text-slate-800">工资配置</h3>
               <button
@@ -805,11 +876,11 @@ export default function PayrollPage() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="px-5 pt-3 border-b border-slate-200 flex gap-1">
+            <div className="mobile-scrollbar flex gap-1 overflow-x-auto border-b border-slate-200 px-5 pt-3">
               <button
                 type="button"
                 onClick={() => setSalaryConfigTab("fulltime")}
-                className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${
+                className={`shrink-0 px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${
                   salaryConfigTab === "fulltime"
                     ? "border-emerald-600 text-emerald-700 bg-emerald-50"
                     : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
@@ -820,7 +891,7 @@ export default function PayrollPage() {
               <button
                 type="button"
                 onClick={() => setSalaryConfigTab("parttime")}
-                className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${
+                className={`shrink-0 px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${
                   salaryConfigTab === "parttime"
                     ? "border-emerald-600 text-emerald-700 bg-emerald-50"
                     : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
@@ -831,7 +902,7 @@ export default function PayrollPage() {
               <button
                 type="button"
                 onClick={() => setSalaryConfigTab("lessonFee")}
-                className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${
+                className={`shrink-0 px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${
                   salaryConfigTab === "lessonFee"
                     ? "border-emerald-600 text-emerald-700 bg-emerald-50"
                     : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
@@ -840,13 +911,13 @@ export default function PayrollPage() {
                 课时费配置
               </button>
             </div>
-            <div className="px-5 py-4 space-y-3 max-h-[60vh] overflow-y-auto">
+            <div className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
               {salaryConfigTab === "fulltime" ? (
                 fullTimeRows.length === 0 ? (
                   <div className="text-sm text-slate-500">暂无全职教练</div>
                 ) : (
                   fullTimeRows.map((row) => (
-                    <div key={row.coachId} className="flex items-center justify-between gap-3">
+                    <div key={row.coachId} className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                       <div className="text-sm font-medium text-slate-700">{row.coachName}</div>
                       <input
                         type="number"
@@ -859,13 +930,13 @@ export default function PayrollPage() {
                             [row.coachId]: Number(e.target.value || 0),
                           }))
                         }
-                        className="w-44 px-3 py-2 border border-slate-300 rounded-md text-right text-sm"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md text-right text-sm sm:w-44"
                       />
                     </div>
                   ))
                 )
               ) : salaryConfigTab === "parttime" ? (
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                   <div className="text-sm font-medium text-slate-700">兼职统一时薪</div>
                   <div className="flex items-center gap-2">
                     <input
@@ -892,7 +963,7 @@ export default function PayrollPage() {
                       <div key={lessonType.id} className="rounded-lg border border-slate-200 p-3 space-y-2">
                         <div className="text-sm font-semibold text-slate-800">{lessonType.name}</div>
                         <div className="space-y-2">
-                          <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                             <div className="text-sm text-slate-600">
                               {isSingleNoviceLessonType(lessonType.name) || config.mode === "PER_SESSION"
                                 ? "每节课时费"
@@ -924,7 +995,7 @@ export default function PayrollPage() {
                             </div>
                           </div>
                           {isNoviceLessonTypeForFreeQuota(lessonType.name) && (
-                            <div className="flex items-center justify-between gap-3">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                               <div className="text-sm text-slate-600">
                                 全职免计人数
                                 <span className="block text-xs text-slate-400">

@@ -213,16 +213,16 @@ export default function LessonAnalytics({
 
   return (
     <div className="border-b border-slate-200 bg-slate-50/60">
-      <div className="px-6 py-4 border-b border-slate-200">
+      <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
         <h3 className="text-base font-semibold text-slate-800 mb-3">{dailyChartTitle}</h3>
-        <div className="h-80">
+        <div className="h-64 sm:h-80">
           {!hasDailyChartData ? (
             <div className="h-full flex items-center justify-center text-sm text-slate-400">
               当前筛选范围内暂无课程记录
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyChartData} margin={{ top: 8, right: 8, left: 8, bottom: 36 }}>
+              <BarChart data={dailyChartData} margin={{ top: 8, right: 4, left: -8, bottom: 36 }}>
                 <XAxis
                   dataKey="dayLabel"
                   tick={{ fontSize: 11 }}
@@ -231,7 +231,7 @@ export default function LessonAnalytics({
                   textAnchor={dailyChartData.length > 14 ? 'end' : 'middle'}
                   height={dailyChartData.length > 14 ? 56 : 32}
                 />
-                <YAxis allowDecimals={false} width={36} tick={{ fontSize: 12 }} />
+                <YAxis allowDecimals={false} width={32} tick={{ fontSize: 11 }} />
                 <Tooltip
                   content={({ active, payload, label }) => {
                     const day = (payload?.[0]?.payload as { day?: string } | undefined)?.day;
@@ -262,7 +262,7 @@ export default function LessonAnalytics({
       </div>
 
       {coachId && coachStats ? (
-        <div className="px-6 py-4 border-b border-slate-200">
+        <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
           <h3 className="text-base font-semibold text-slate-800 mb-3">
             {coachStats.coachName} · 课程分析
           </h3>
@@ -302,14 +302,14 @@ export default function LessonAnalytics({
           )}
         </div>
       ) : (
-        <div className="px-6 py-4">
+        <div className="px-4 py-4 sm:px-6">
           <h3 className="text-base font-semibold text-slate-800 mb-3">各教练课程节数</h3>
-          <div className="h-80">
+          <div className="h-64 sm:h-80">
             {records.length === 0 || activeCoaches.length === 0 ? (
               <div className="h-full flex items-center justify-center text-sm text-slate-400">暂无数据</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={coachBarData} margin={{ top: 8, right: 8, left: 8, bottom: 36 }}>
+                <BarChart data={coachBarData} margin={{ top: 8, right: 4, left: -8, bottom: 36 }}>
                   <XAxis
                     dataKey="coachName"
                     tick={{ fontSize: 12 }}
@@ -318,7 +318,7 @@ export default function LessonAnalytics({
                     textAnchor="end"
                     height={48}
                   />
-                  <YAxis allowDecimals={false} width={36} tick={{ fontSize: 12 }} />
+                  <YAxis allowDecimals={false} width={32} tick={{ fontSize: 11 }} />
                   <Tooltip
                     content={({ active, payload, label }) =>
                       renderLessonTypeTooltip(active, payload, label, lessonTypeNameById)

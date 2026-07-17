@@ -47,7 +47,64 @@ export default function TransactionHistory({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div>
+      <div className="divide-y divide-slate-100 md:hidden">
+        {transactions.map((tx) => (
+          <div key={tx.id} className="space-y-3 px-4 py-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${TYPE_COLORS[tx.type]}`}>
+                    {TYPE_LABELS[tx.type]}
+                  </span>
+                  <span className="text-xs text-slate-400">{formatDate(tx.performedAt)}</span>
+                </div>
+                <div className="mt-2 font-medium text-slate-800">
+                  {tx.variant.product.brand} · {tx.variant.product.name}
+                </div>
+                <div className="text-xs text-slate-500">{tx.variant.spec}</div>
+              </div>
+              <div className={`shrink-0 text-right font-semibold ${tx.quantityDelta > 0 ? "text-emerald-600" : "text-red-500"}`}>
+                {tx.quantityDelta > 0 ? `+${tx.quantityDelta}` : tx.quantityDelta}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <div className="text-xs text-slate-400">门店</div>
+                <div className="text-slate-700">{tx.store.name}</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400">单价</div>
+                <div className="text-slate-700">¥{tx.unitPrice.toFixed(2)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400">操作人</div>
+                <div className="truncate text-slate-700">{tx.performedBy.name ?? tx.performedBy.id}</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400">备注</div>
+                <div className="truncate text-slate-700">{tx.note ?? "—"}</div>
+              </div>
+            </div>
+            {isManager && onDelete && (
+              <div className="text-right">
+                <button
+                  onClick={() => {
+                    if (confirm("确认删除这条记录？此操作会同时删除配对的调货记录。")) {
+                      onDelete(tx.id);
+                    }
+                  }}
+                  className="text-sm text-slate-400 hover:text-red-500"
+                >
+                  删除
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+    <div className="hidden overflow-x-auto md:block">
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-slate-100 text-slate-600">
@@ -118,6 +175,7 @@ export default function TransactionHistory({
           ))}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

@@ -124,10 +124,10 @@ export default function ExportImageModal({
   );
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] backdrop-blur-sm">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[90vh] m-4 flex flex-col">
+    <div className="fixed inset-0 z-[200] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center">
+      <div className="flex max-h-[94vh] w-full max-w-6xl flex-col rounded-t-xl bg-white shadow-2xl sm:m-4 sm:rounded-xl">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-slate-200">
+        <div className="flex justify-between items-center border-b border-slate-200 p-5 sm:p-6">
           <div className="flex items-center gap-3">
             <div className="bg-emerald-100 p-2 rounded-lg">
               <ImageIcon className="w-5 h-5 text-emerald-600" />
@@ -146,7 +146,7 @@ export default function ExportImageModal({
         </div>
 
         {/* Store Selection */}
-        <div className="p-6 border-b border-slate-200">
+        <div className="border-b border-slate-200 p-5 sm:p-6">
           <div className="flex items-center justify-between mb-3">
             <div className="text-sm font-medium text-slate-700">
               选择门店 ({selectedStoreIds.length}/{activeStores.length})
@@ -179,8 +179,8 @@ export default function ExportImageModal({
         </div>
 
         {/* Preview */}
-        <div className="flex-1 overflow-auto p-6 bg-slate-50">
-          <div className="bg-white rounded-lg shadow-sm p-6" ref={contentRef}>
+        <div className="mobile-scrollbar flex-1 overflow-auto bg-slate-50 p-4 sm:p-6">
+          <div className="min-w-[900px] rounded-lg bg-white p-6 shadow-sm" ref={contentRef}>
             {/* Title */}
             <div className="text-center mb-6">
               <h2 className="text-2xl font-bold text-slate-800 mb-2">嘿抱排班表</h2>
@@ -416,7 +416,7 @@ export default function ExportImageModal({
         </div>
 
         {/* Actions */}
-        <div className="p-6 border-t border-slate-200 flex gap-3">
+        <div className="flex gap-3 border-t border-slate-200 p-5 sm:p-6">
           <button
             onClick={onClose}
             className="flex-1 px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-lg border border-slate-300 font-medium transition-colors"
