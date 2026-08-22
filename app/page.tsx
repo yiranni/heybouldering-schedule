@@ -552,9 +552,9 @@ export default function RockGymScheduler() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-[1600px] grid-cols-1 gap-4 p-3 sm:p-4 md:p-6 lg:grid-cols-5 lg:gap-6">
+      <main className="mx-auto flex max-w-[1800px] flex-col gap-4 p-3 sm:p-4 md:p-6 lg:flex-row lg:gap-5">
         {canEdit && (
-          <div className="space-y-6 lg:col-span-1">
+          <div className="w-full shrink-0 space-y-6 lg:w-48 xl:w-52">
             <WeeklyStats
               weekStats={weekStats}
               monthStats={monthStats}
@@ -580,7 +580,7 @@ export default function RockGymScheduler() {
           </div>
         )}
 
-        <div className={`${canEdit ? "lg:col-span-4" : "lg:col-span-5"} space-y-4`}>
+        <div className="min-w-0 flex-1 space-y-4">
           {/* 教练筛选器 */}
           <CollapsiblePanel
             title="筛选教练"

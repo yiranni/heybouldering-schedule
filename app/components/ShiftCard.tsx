@@ -42,15 +42,15 @@ export default function ShiftCard({
           课
         </button>
       )}
-      <div className="flex flex-1 min-w-0 items-center justify-between bg-white p-1.5 rounded border border-slate-100 shadow-sm hover:shadow-md transition-all">
-        <div className="flex items-center gap-2 overflow-hidden min-w-0">
+      <div className="relative flex-1 min-w-0 bg-white px-1.5 py-1 rounded border border-slate-100 shadow-sm hover:shadow-md transition-all">
+        <div className={`flex items-center gap-1.5 ${canEdit ? 'pr-4' : ''}`}>
           <div
-            className={`w-6 h-6 rounded-full ${coach.color} flex items-center justify-center text-[10px] text-white font-bold flex-shrink-0`}
+            className={`w-5 h-5 rounded-full ${coach.color} flex items-center justify-center text-[9px] text-white font-bold flex-shrink-0`}
           >
             {coach.avatar}
           </div>
           <div className="min-w-0">
-            <div className="text-xs font-medium text-slate-700 truncate">
+            <div className="text-xs font-medium text-slate-700 whitespace-nowrap">
               {coach.name}
             </div>
             {isExtended && (
@@ -61,7 +61,7 @@ export default function ShiftCard({
         {canEdit && (
           <button
             onClick={() => onRemove(scheduleId)}
-            className="text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1 flex-shrink-0"
+            className="absolute top-0.5 right-0.5 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 leading-none"
             title="移除排班"
           >
             ✕

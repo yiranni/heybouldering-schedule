@@ -59,13 +59,13 @@ export default function ScheduleCalendar({
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="mobile-scrollbar overflow-x-auto">
-        <div className="min-w-[920px]">
+        <div className="min-w-[1140px]">
       {/* Date Header Row */}
       <div className="sticky top-0 z-10 bg-gradient-to-r from-slate-700 to-slate-600">
-        <div className="grid grid-cols-8 gap-px bg-slate-500">
+        <div className="grid grid-cols-[4.5rem_repeat(7,minmax(9.75rem,1fr))] gap-px bg-slate-500">
           {/* Store name column header */}
-          <div className="bg-slate-700 p-3">
-            <div className="text-sm font-bold text-white">门店</div>
+          <div className="bg-slate-700 p-2 flex items-center justify-center">
+            <div className="text-xs font-bold text-white">门店</div>
           </div>
 
           {/* Date columns */}
@@ -98,11 +98,11 @@ export default function ScheduleCalendar({
       {/* Store Rows */}
       <div className="divide-y divide-slate-200">
         {activeStores.map((store) => (
-          <div key={store.id} className="grid grid-cols-8 gap-px bg-slate-200">
+          <div key={store.id} className="grid grid-cols-[4.5rem_repeat(7,minmax(9.75rem,1fr))] gap-px bg-slate-200">
             {/* Store Info Column */}
-            <div className="bg-white p-4 flex flex-col justify-center">
-              <h3 className="text-base font-bold text-slate-800 mb-2">{store.name}</h3>
-              <div className="space-y-1 text-[10px] text-slate-600">
+            <div className="bg-white p-2 flex flex-col justify-center">
+              <h3 className="text-xs font-bold text-slate-800 leading-tight">{store.name}</h3>
+              <div className="mt-1 space-y-0.5 text-[9px] text-slate-600 leading-tight">
                 {/* 支持新旧两种系统 */}
                 {store.shifts && store.shifts.length > 0 ? (
                   // 新系统：使用 shifts 配置
