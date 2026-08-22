@@ -30,6 +30,7 @@ interface ShiftDropZoneProps {
   ) => void;
   onRemove: (scheduleId: string) => void;
   onOpenModal: () => void;
+  onToggleNeedsLesson?: (scheduleId: string) => void;
 }
 
 export default function ShiftDropZone({
@@ -49,6 +50,7 @@ export default function ShiftDropZone({
   onAdd,
   onRemove,
   onOpenModal,
+  onToggleNeedsLesson,
 }: ShiftDropZoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -156,6 +158,8 @@ export default function ShiftDropZone({
               onRemove={onRemove}
               isExtended={isExtended}
               canEdit={canEdit}
+              needsLesson={s.needsLesson}
+              onToggleNeedsLesson={onToggleNeedsLesson}
             />
           );
         })}

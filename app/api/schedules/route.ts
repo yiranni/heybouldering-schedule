@@ -65,12 +65,13 @@ export async function POST(request: NextRequest) {
 
     // Create all schedules
     const createdSchedules = await prisma.schedule.createMany({
-      data: schedules.map((s: any) => ({
+      data: schedules.map((s: { dateStr: string; shiftId: string; shiftName: string; coachId: string; storeId: string; needsLesson?: boolean }) => ({
         dateStr: s.dateStr,
         shiftId: s.shiftId,
         shiftName: s.shiftName,
         coachId: s.coachId,
         storeId: s.storeId,
+        needsLesson: Boolean(s.needsLesson),
       })),
     });
 

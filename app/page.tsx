@@ -272,6 +272,16 @@ export default function RockGymScheduler() {
     setHasUnsavedChanges(true);
   };
 
+  const handleToggleNeedsLesson = (scheduleId: string) => {
+    if (!canEdit) return;
+    setSchedules((prev) =>
+      prev.map((s) =>
+        s.id === scheduleId ? { ...s, needsLesson: !s.needsLesson } : s
+      )
+    );
+    setHasUnsavedChanges(true);
+  };
+
   const handleAddShift = (
     dateStr: string,
     type: ShiftType,
@@ -317,6 +327,7 @@ export default function RockGymScheduler() {
       storeId,
       shiftType: type,
       isExtended,
+      needsLesson: false,
     };
     setSchedules((prev) => [...prev, newShift]);
     setHasUnsavedChanges(true);
@@ -629,6 +640,7 @@ export default function RockGymScheduler() {
             canEdit={canEdit}
             onAddShift={handleAddShift}
             onRemoveShift={handleRemoveShift}
+            onToggleNeedsLesson={handleToggleNeedsLesson}
             onOpenModal={(date, type, storeId, shiftId, shiftName) => setSelectedSlot({ date, type, storeId, shiftId, shiftName })}
           />
         </div>

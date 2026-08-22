@@ -91,16 +91,17 @@ model CoachStore {
 }
 
 model Schedule {
-  id        String   @id @default(cuid())
-  dateStr   String   // ISO Format YYYY-MM-DD
-  shiftId   String   // 班次ID，对应门店shifts中的id
-  shiftName String   // 班次名称（冗余存储，便于查询）
-  coachId   String
-  storeId   String
-  coach     Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
-  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  dateStr     String   // ISO Format YYYY-MM-DD
+  shiftId     String   // 班次ID，对应门店shifts中的id
+  shiftName   String   // 班次名称（冗余存储，便于查询）
+  coachId     String
+  storeId     String
+  needsLesson Boolean  @default(false) // 当天是否需要上课
+  coach       Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("schedules")
   @@index([dateStr])

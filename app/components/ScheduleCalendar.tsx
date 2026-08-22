@@ -13,6 +13,7 @@ interface ScheduleCalendarProps {
   onAddShift: (dateStr: string, type: ShiftType, coachId: string, storeId: string, shiftId?: string, shiftName?: string) => void;
   onRemoveShift: (scheduleId: string) => void;
   onOpenModal: (date: string, type: ShiftType, storeId: string, shiftId?: string, shiftName?: string) => void;
+  onToggleNeedsLesson?: (scheduleId: string) => void;
 }
 
 export default function ScheduleCalendar({
@@ -24,6 +25,7 @@ export default function ScheduleCalendar({
   onAddShift,
   onRemoveShift,
   onOpenModal,
+  onToggleNeedsLesson,
 }: ScheduleCalendarProps) {
   const activeStores = stores.filter(s => !s.archived);
 
@@ -192,6 +194,7 @@ export default function ScheduleCalendar({
                           }
                           onRemove={onRemoveShift}
                           onOpenModal={() => onOpenModal(dateStr, shiftType, store.id, shift.id, shift.name)}
+                          onToggleNeedsLesson={onToggleNeedsLesson}
                         />
                       );
                     })}

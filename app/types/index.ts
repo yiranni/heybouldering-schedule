@@ -66,6 +66,7 @@ export type ScheduleItem = {
   storeId: string;
   shiftId: string; // 班次ID
   shiftName: string; // 班次名称
+  needsLesson?: boolean; // 当天是否需要上课
   // 兼容旧代码的字段
   shiftType?: ShiftType;
   isExtended?: boolean;
