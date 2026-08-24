@@ -39,7 +39,7 @@ export default function ShiftCard({
           }`}
           title={needsLesson ? '当天需要上课' : '标注上课'}
         >
-          课
+          <span className="leading-none relative -top-0.5">课</span>
         </button>
       )}
       <div className="relative flex-1 min-w-0 bg-white px-1.5 py-1 rounded border border-slate-100 shadow-sm hover:shadow-md transition-all">

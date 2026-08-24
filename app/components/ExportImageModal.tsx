@@ -24,7 +24,7 @@ function ExportScheduleCoach({
       </div>
       {schedule.needsLesson && (
         <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
-          课
+          <span className="leading-none relative -top-0.5">课</span>
         </span>
       )}
     </div>
