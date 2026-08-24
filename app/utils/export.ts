@@ -12,7 +12,7 @@ export function exportScheduleToDoc(
   const scheduleByStoreAndDate: {
     [storeId: string]: {
       [date: string]: {
-        [shiftId: string]: Coach[];
+        [shiftId: string]: Array<{ coach: Coach; needsLesson?: boolean }>;
       };
     };
   } = {};
@@ -38,7 +38,10 @@ export function exportScheduleToDoc(
         scheduleByStoreAndDate[schedule.storeId][schedule.dateStr][shiftId] = [];
       }
 
-      scheduleByStoreAndDate[schedule.storeId][schedule.dateStr][shiftId].push(coach);
+      scheduleByStoreAndDate[schedule.storeId][schedule.dateStr][shiftId].push({
+        coach,
+        needsLesson: schedule.needsLesson,
+      });
     });
 
   // 生成文档内容
@@ -103,7 +106,9 @@ export function exportScheduleToDoc(
       // 输出每个班次的教练
       dayShifts.forEach(shift => {
         const shiftCoaches = daySchedule[shift.id] || [];
-        const coachNames = shiftCoaches.map(c => c.name).join(' ');
+        const coachNames = shiftCoaches
+          .map((item) => (item.needsLesson ? `${item.coach.name}[课]` : item.coach.name))
+          .join(' ');
         content += `  ${shift.name}: ${coachNames || '无'}\n`;
       });
 

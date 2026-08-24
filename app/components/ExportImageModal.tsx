@@ -6,6 +6,31 @@ import html2canvas from 'html2canvas';
 import { Coach, Store, ScheduleItem } from '../types';
 import { getDayOfWeek } from '../utils/date';
 
+function ExportScheduleCoach({
+  schedule,
+  coach,
+  className = 'px-2 pt-[2px] pb-[12px]',
+}: {
+  schedule: ScheduleItem;
+  coach: Coach;
+  className?: string;
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      <div
+        className={`${coach.color} text-white text-xs ${className} rounded font-medium flex flex-1 items-center justify-center leading-tight min-w-0`}
+      >
+        {coach.name}
+      </div>
+      {schedule.needsLesson && (
+        <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+          课
+        </span>
+      )}
+    </div>
+  );
+}
+
 interface ExportImageModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -289,12 +314,11 @@ export default function ExportImageModal({
                                       const coach = coaches.find(c => c.id === s.coachId);
                                       if (!coach) return null;
                                       return (
-                                        <div
+                                        <ExportScheduleCoach
                                           key={s.id}
-                                          className={`${coach.color} text-white text-xs px-2 pt-[2px] pb-[12px] rounded font-medium flex items-center justify-center leading-tight`}
-                                        >
-                                          {coach.name}
-                                        </div>
+                                          schedule={s}
+                                          coach={coach}
+                                        />
                                       );
                                     })}
                                   </div>
@@ -341,12 +365,12 @@ export default function ExportImageModal({
                                       const coach = coaches.find(c => c.id === s.coachId);
                                       if (!coach) return null;
                                       return (
-                                        <div
+                                        <ExportScheduleCoach
                                           key={s.id}
-                                          className={`${coach.color} text-white text-xs px-2 pt-[5px] pb-[7px] rounded font-medium flex items-center justify-center leading-tight`}
-                                        >
-                                          {coach.name}
-                                        </div>
+                                          schedule={s}
+                                          coach={coach}
+                                          className="px-2 pt-[5px] pb-[7px]"
+                                        />
                                       );
                                     })}
                                   </div>
@@ -387,12 +411,12 @@ export default function ExportImageModal({
                                       const coach = coaches.find(c => c.id === s.coachId);
                                       if (!coach) return null;
                                       return (
-                                        <div
+                                        <ExportScheduleCoach
                                           key={s.id}
-                                          className={`${coach.color} text-white text-xs px-2 pt-[5px] pb-[7px] rounded font-medium flex items-center justify-center leading-tight`}
-                                        >
-                                          {coach.name}
-                                        </div>
+                                          schedule={s}
+                                          coach={coach}
+                                          className="px-2 pt-[5px] pb-[7px]"
+                                        />
                                       );
                                     })}
                                   </div>
