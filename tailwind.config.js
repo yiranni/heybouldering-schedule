@@ -1,3 +1,5 @@
+const plugin = require('tailwindcss/plugin');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -12,5 +14,12 @@ module.exports = {
       },
     },
   },
-  plugins: [],
-}
+  plugins: [
+    // Variant that only matches devices with a real hover capability (mouse).
+    // Touch devices (phones/tablets) never match it, so hover-to-reveal
+    // actions must not rely on it for visibility.
+    plugin(({ addVariant }) => {
+      addVariant('hoverable', ['@media (hover: hover)']);
+    }),
+  ],
+};

@@ -1,13 +1,15 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, ReactNode } from 'react';
 import { Coach, DayShiftAvailability, Shift } from '../types';
-import { Calendar } from 'lucide-react';
+import { Calendar, Clock } from 'lucide-react';
 
 interface CoachAvailabilityEditorProps {
   coach: Coach;
   onUpdate: (id: string, updates: Partial<Coach>) => Promise<void>;
   canEdit: boolean;
+  /** 额外操作按钮（如编辑/删除教练），展示在摘要行右侧 */
+  headerActions?: ReactNode;
 }
 
 const DAYS_OF_WEEK = [
@@ -20,7 +22,7 @@ const DAYS_OF_WEEK = [
   { value: 0, label: '周日', shortLabel: '日' },
 ];
 
-export default function CoachAvailabilityEditor({ coach, onUpdate, canEdit }: CoachAvailabilityEditorProps) {
+export default function CoachAvailabilityEditor({ coach, onUpdate, canEdit, headerActions }: CoachAvailabilityEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
 
   // 获取教练所有门店的所有班次
@@ -157,17 +159,23 @@ export default function CoachAvailabilityEditor({ coach, onUpdate, canEdit }: Co
 
     return (
       <div className="mt-2 space-y-1">
-        <div className="flex items-center gap-2 text-xs text-slate-600">
-          <Calendar className="w-3 h-3" />
+        <div className="flex items-start gap-2 text-xs text-slate-600">
+          <Calendar className="mt-0.5 w-3 h-3 flex-shrink-0" />
           <span className="font-mono">{getScheduleDescription()}</span>
         </div>
-        {canEdit && (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-          >
-            编辑可工作时间
-          </button>
+        {(canEdit || headerActions) && (
+          <div className="flex items-center justify-end gap-0.5">
+            {canEdit && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="p-1 hover:bg-blue-50 rounded-md transition-colors"
+                title="编辑可工作时间"
+              >
+                <Clock className="w-3.5 h-3.5 text-blue-500" />
+              </button>
+            )}
+            {headerActions}
+          </div>
         )}
       </div>
     );

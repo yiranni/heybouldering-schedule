@@ -248,7 +248,7 @@ export default function StoreList({ stores, canEdit, onDeleteStore, onAddStore, 
                           {canEdit && (
                             <button
                               onClick={() => startEditing(store)}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-blue-50 rounded-md transition-all"
+                              className="opacity-100 hoverable:opacity-0 hoverable:group-hover:opacity-100 p-1.5 hover:bg-blue-50 rounded-md transition-all"
                               title="编辑门店"
                             >
                               <Edit2 className="w-3.5 h-3.5 text-blue-500" />
@@ -259,7 +259,7 @@ export default function StoreList({ stores, canEdit, onDeleteStore, onAddStore, 
                             <button
                               onClick={() => handleDeleteStore(store.id)}
                               disabled={deletingId === store.id}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 rounded-md transition-all disabled:opacity-50"
+                              className="opacity-100 hoverable:opacity-0 hoverable:group-hover:opacity-100 p-1.5 hover:bg-red-50 rounded-md transition-all disabled:opacity-50"
                               title="删除门店"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-red-500" />

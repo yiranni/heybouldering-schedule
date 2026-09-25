@@ -465,45 +465,22 @@ export default function CoachList({ coaches, stores, canEdit, onDragStart, onDel
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center gap-2">
+                        <div
+                          draggable={canEdit}
+                          onDragStart={(e) => {
+                            if (canEdit) onDragStart(e, coach.id);
+                          }}
+                          className={`flex min-w-0 items-center gap-2 ${canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+                        >
                           <div
-                            draggable={canEdit}
-                            onDragStart={(e) => {
-                              if (canEdit) onDragStart(e, coach.id);
-                            }}
-                            className={`flex items-center gap-2 flex-1 ${canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}`}
+                            className={`w-6 h-6 rounded-full ${coach.color} flex-shrink-0 flex items-center justify-center text-[10px] text-white font-bold`}
                           >
-                            <div
-                              className={`w-6 h-6 rounded-full ${coach.color} flex-shrink-0 flex items-center justify-center text-[10px] text-white font-bold`}
-                            >
-                              {coach.avatar}
-                            </div>
-                            <span className="text-sm text-slate-600 truncate font-medium">
-                              {coach.name}
-                            </span>
-                            {canEdit && <GripVertical className="w-4 h-4 text-slate-300 ml-auto" />}
+                            {coach.avatar}
                           </div>
-
-                          {canEdit && (
-                            <button
-                              onClick={() => startEditing(coach)}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-blue-50 rounded-md transition-all"
-                              title="编辑教练"
-                            >
-                              <Edit2 className="w-3.5 h-3.5 text-blue-500" />
-                            </button>
-                          )}
-
-                          {canEdit && (
-                            <button
-                              onClick={() => handleDeleteCoach(coach.id)}
-                              disabled={deletingId === coach.id}
-                              className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 rounded-md transition-all disabled:opacity-50"
-                              title="删除教练"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                            </button>
-                          )}
+                          <span className="text-sm text-slate-600 truncate font-medium">
+                            {coach.name}
+                          </span>
+                          {canEdit && <GripVertical className="w-4 h-4 text-slate-300 ml-auto" />}
                         </div>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {/* 雇佣类型标签 */}
@@ -530,7 +507,32 @@ export default function CoachList({ coaches, stores, canEdit, onDragStart, onDel
                             </span>
                           ))}
                         </div>
-                        <CoachAvailabilityEditor coach={coach} onUpdate={onUpdateCoach} canEdit={canEdit} />
+                        <CoachAvailabilityEditor
+                          coach={coach}
+                          onUpdate={onUpdateCoach}
+                          canEdit={canEdit}
+                          headerActions={
+                            canEdit ? (
+                              <>
+                                <button
+                                  onClick={() => startEditing(coach)}
+                                  className="p-1 hover:bg-blue-50 rounded-md transition-colors"
+                                  title="编辑教练"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5 text-blue-500" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCoach(coach.id)}
+                                  disabled={deletingId === coach.id}
+                                  className="p-1 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                                  title="删除教练"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                </button>
+                              </>
+                            ) : undefined
+                          }
+                        />
                       </>
                     )}
                   </div>
