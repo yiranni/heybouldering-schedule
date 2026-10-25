@@ -1,7 +1,7 @@
 "use client";
 
-import { Calendar, Clock, List, Plus, Settings, X } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Calendar, ChevronDown, Clock, List, Plus, Settings, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TopNavMenu from "../components/TopNavMenu";
 import UserInfo from "../components/UserInfo";
 import { useAuth } from "../components/AuthGuard";
@@ -140,13 +140,67 @@ export default function PayrollPage() {
   const [salaryDraft, setSalaryDraft] = useState<Record<string, number>>({});
   const [partTimeHourlyRateDraft, setPartTimeHourlyRateDraft] = useState(20);
   const [lessonFeeConfigDraft, setLessonFeeConfigDraft] = useState<Record<string, LessonFeeConfigDraft>>({});
+  const [selectedCoachIds, setSelectedCoachIds] = useState<string[] | null>(null);
+  const [coachFilterOpen, setCoachFilterOpen] = useState(false);
+  const coachFilterRef = useRef<HTMLDivElement>(null);
+
+  const filteredRows = useMemo(() => {
+    if (selectedCoachIds === null) return rows;
+    return rows.filter((row) => selectedCoachIds.includes(row.coachId));
+  }, [rows, selectedCoachIds]);
+
+  const coachFilterLabel = useMemo(() => {
+    if (selectedCoachIds === null) return "全部教练";
+    if (selectedCoachIds.length === 0) return "未选择教练";
+    if (selectedCoachIds.length === 1) {
+      return rows.find((row) => row.coachId === selectedCoachIds[0])?.coachName ?? "1 位教练";
+    }
+    return `已选 ${selectedCoachIds.length} 位教练`;
+  }, [rows, selectedCoachIds]);
 
   const totals = useMemo(() => {
-    const totalLaborCost = rows.reduce((sum, row) => sum + row.totalSalary, 0);
+    const totalLaborCost = filteredRows.reduce((sum, row) => sum + row.totalSalary, 0);
     return {
       totalLaborCost: Number(totalLaborCost.toFixed(2)),
     };
-  }, [rows]);
+  }, [filteredRows]);
+
+  useEffect(() => {
+    setSelectedCoachIds(null);
+  }, [month]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (coachFilterRef.current && !coachFilterRef.current.contains(event.target as Node)) {
+        setCoachFilterOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleCoachFilter = (coachId: string) => {
+    const allIds = rows.map((row) => row.coachId);
+    setSelectedCoachIds((prev) => {
+      if (prev === null) {
+        return allIds.filter((id) => id !== coachId);
+      }
+      if (prev.includes(coachId)) {
+        return prev.filter((id) => id !== coachId);
+      }
+      const next = [...prev, coachId];
+      if (next.length === allIds.length) return null;
+      return next;
+    });
+  };
+
+  const selectAllCoachesInFilter = () => {
+    setSelectedCoachIds(null);
+  };
+
+  const clearCoachFilter = () => {
+    setSelectedCoachIds([]);
+  };
 
   const lessonFeeSessionSummary = useMemo(() => {
     if (!lessonFeeDetails?.items.length) return [];
@@ -427,11 +481,64 @@ export default function PayrollPage() {
 
       <main className="mx-auto max-w-[1400px] space-y-4 p-3 sm:p-4 md:p-6">
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <div className="border-b border-slate-200 px-4 py-4 sm:px-6">
-            <h2 className="text-lg font-semibold text-slate-800">工资计算（按月）</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              销售提成与课时费根据当月记录自动计算；全职基本工资与兼职时薪在「工资配置」中维护；兼职工时由班表与手动增加工时合计，保存后自动更新。
-            </p>
+          <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-6">
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold text-slate-800">工资计算（按月）</h2>
+              <p className="text-sm text-slate-500 mt-1">
+                销售提成与课时费根据当月记录自动计算；全职基本工资与兼职时薪在「工资配置」中维护；兼职工时由班表与手动增加工时合计，保存后自动更新。
+              </p>
+            </div>
+            <div className="relative shrink-0" ref={coachFilterRef}>
+              <button
+                type="button"
+                onClick={() => setCoachFilterOpen((open) => !open)}
+                disabled={loading || rows.length === 0}
+                className="inline-flex min-w-[10rem] items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <span className="truncate">{coachFilterLabel}</span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+              </button>
+              {coachFilterOpen && rows.length > 0 && (
+                <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={clearCoachFilter}
+                      className="text-slate-500 hover:text-slate-700"
+                    >
+                      重置
+                    </button>
+                    <button
+                      type="button"
+                      onClick={selectAllCoachesInFilter}
+                      className="text-emerald-600 hover:text-emerald-700"
+                    >
+                      全选
+                    </button>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto">
+                    {rows.map((row) => {
+                      const checked =
+                        selectedCoachIds === null || selectedCoachIds.includes(row.coachId);
+                      return (
+                        <label
+                          key={row.coachId}
+                          className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                        >
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                            checked={checked}
+                            onChange={() => toggleCoachFilter(row.coachId)}
+                          />
+                          <span className="truncate">{row.coachName}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="hidden overflow-x-auto md:block">
@@ -458,8 +565,14 @@ export default function PayrollPage() {
                       暂无可计算的教练数据
                     </td>
                   </tr>
+                ) : filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
+                      没有符合筛选条件的教练
+                    </td>
+                  </tr>
                 ) : (
-                  rows.map((row) => (
+                  filteredRows.map((row) => (
                     <tr key={row.coachId} className="hover:bg-slate-50">
                       <td className="px-4 py-3 text-sm text-slate-700">
                         <div className="font-medium">{row.coachName}</div>
@@ -541,9 +654,11 @@ export default function PayrollPage() {
               <div className="px-4 py-10 text-center text-slate-500">加载中...</div>
             ) : rows.length === 0 ? (
               <div className="px-4 py-10 text-center text-slate-400">暂无可计算的教练数据</div>
+            ) : filteredRows.length === 0 ? (
+              <div className="px-4 py-10 text-center text-slate-400">没有符合筛选条件的教练</div>
             ) : (
               <>
-                {rows.map((row) => (
+                {filteredRows.map((row) => (
                   <div key={row.coachId} className="space-y-3 px-4 py-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
