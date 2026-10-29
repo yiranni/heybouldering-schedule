@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
 // Bump when prisma/schema.prisma changes so dev hot-reload discards stale clients.
-const PRISMA_SCHEMA_VERSION = 'overtime-requests-v1';
+const PRISMA_SCHEMA_VERSION = 'overtime-times-v1';
 
 function createPrismaClient() {
   return new PrismaClient({

@@ -2,9 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { forbidden, unauthorized } from "@/app/lib/auth";
 import { createOvertimeRequest } from "@/app/lib/overtime.server";
 import { resolveSalesAccess } from "@/app/lib/salesAccess";
+import { calcHoursFromTimes } from "@/app/lib/scheduleHours";
 
 function isValidDateStr(dateStr: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
+}
+
+function isValidTime(time: string): boolean {
+  return /^\d{2}:\d{2}$/.test(time);
 }
 
 export async function POST(request: NextRequest) {
@@ -21,18 +26,29 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const dateStr = String(body?.dateStr || "");
-    const hours = Number(body?.hours);
+    const startTime = String(body?.startTime || "");
+    const endTime = String(body?.endTime || "");
+    let hours = Number(body?.hours);
 
     if (!isValidDateStr(dateStr)) {
       return NextResponse.json({ error: "日期格式无效" }, { status: 400 });
     }
+    if (!isValidTime(startTime) || !isValidTime(endTime)) {
+      return NextResponse.json({ error: "开始/结束时间格式无效" }, { status: 400 });
+    }
+    const hoursFromTimes = calcHoursFromTimes(startTime, endTime);
+    if (hoursFromTimes <= 0) {
+      return NextResponse.json({ error: "结束时间须晚于开始时间" }, { status: 400 });
+    }
     if (!Number.isFinite(hours) || hours <= 0) {
-      return NextResponse.json({ error: "时长必须大于 0" }, { status: 400 });
+      hours = hoursFromTimes;
     }
 
     const created = await createOvertimeRequest({
       coachId: access.coachId,
       dateStr,
+      startTime,
+      endTime,
       hours: Math.round(hours * 100) / 100,
     });
 

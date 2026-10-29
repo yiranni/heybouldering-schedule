@@ -8,6 +8,8 @@ export const DEFAULT_OVERTIME_HOURLY_RATE = 30;
 export type OvertimeRequestItem = {
   id: string;
   dateStr: string;
+  startTime: string;
+  endTime: string;
   hours: number;
 };
 
@@ -18,12 +20,47 @@ type OvertimeRequestDb = {
       dateStr?: { gte?: string; lte?: string };
     };
     orderBy?: Array<{ dateStr: "asc" } | { createdAt: "asc" }>;
-    select?: { id: true; coachId: true; dateStr: true; hours: true };
-  }): Promise<Array<{ id: string; coachId?: string; dateStr: string; hours: number }>>;
+    select?: {
+      id: true;
+      coachId?: true;
+      dateStr: true;
+      startTime?: true;
+      endTime?: true;
+      hours: true;
+    };
+  }): Promise<
+    Array<{
+      id: string;
+      coachId?: string;
+      dateStr: string;
+      startTime?: string;
+      endTime?: string;
+      hours: number;
+    }>
+  >;
   create(args: {
-    data: { coachId: string; dateStr: string; hours: number };
-    select: { id: true; dateStr: true; hours: true };
-  }): Promise<{ id: string; dateStr: string; hours: number }>;
+    data: {
+      coachId: string;
+      dateStr: string;
+      startTime: string;
+      endTime: string;
+      hours: number;
+    };
+    select: {
+      id: true;
+      dateStr: true;
+      startTime: true;
+      endTime: true;
+      hours: true;
+    };
+  }): Promise<{
+    id: string;
+    dateStr: string;
+    startTime: string;
+    endTime: string;
+    hours: number;
+  }>;
+  delete(args: { where: { id: string } }): Promise<{ id: string }>;
 };
 
 async function getOvertimeRequestDb(): Promise<OvertimeRequestDb> {
@@ -59,11 +96,20 @@ export async function listOvertimeRequestsForCoachMonth(
       dateStr: { gte: startDate, lte: endDate },
     },
     orderBy: [{ dateStr: "asc" }, { createdAt: "asc" }],
-    select: { id: true, coachId: true, dateStr: true, hours: true },
+    select: {
+      id: true,
+      coachId: true,
+      dateStr: true,
+      startTime: true,
+      endTime: true,
+      hours: true,
+    },
   });
   return records.map((record) => ({
     id: record.id,
     dateStr: record.dateStr,
+    startTime: record.startTime ?? "",
+    endTime: record.endTime ?? "",
     hours: round2(Number(record.hours) || 0),
   }));
 }
@@ -91,13 +137,25 @@ export async function getOvertimeHoursByCoachForMonth(month: string): Promise<Ma
 export async function createOvertimeRequest(input: {
   coachId: string;
   dateStr: string;
+  startTime: string;
+  endTime: string;
   hours: number;
 }) {
   const db = await getOvertimeRequestDb();
   return db.create({
     data: input,
-    select: { id: true, dateStr: true, hours: true },
+    select: { id: true, dateStr: true, startTime: true, endTime: true, hours: true },
   });
+}
+
+export async function deleteOvertimeRequest(id: string): Promise<boolean> {
+  const db = await getOvertimeRequestDb();
+  try {
+    await db.delete({ where: { id } });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function calcOvertimePay(totalHours: number, hourlyRate: number): number {

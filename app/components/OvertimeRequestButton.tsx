@@ -79,7 +79,7 @@ export default function OvertimeRequestButton() {
       const response = await fetch("/api/overtime-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dateStr, hours }),
+        body: JSON.stringify({ dateStr, startTime, endTime, hours }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {

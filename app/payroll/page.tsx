@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, ChevronDown, Clock, List, Plus, Settings, X } from "lucide-react";
+import { Calendar, ChevronDown, Clock, List, Plus, Settings, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TopNavMenu from "../components/TopNavMenu";
 import UserInfo from "../components/UserInfo";
@@ -54,7 +54,13 @@ type PartTimeHoursDetails = {
 };
 
 type OvertimeDetailsResult = {
-  items: Array<{ id: string; dateStr: string; hours: number }>;
+  items: Array<{
+    id: string;
+    dateStr: string;
+    startTime: string;
+    endTime: string;
+    hours: number;
+  }>;
   totalHours: number;
   hourlyRate: number;
   overtimePay: number;
@@ -133,6 +139,7 @@ export default function PayrollPage() {
   const [lessonFeeDetails, setLessonFeeDetails] = useState<LessonFeeDetailsResult | null>(null);
   const [partTimeHoursDetails, setPartTimeHoursDetails] = useState<PartTimeHoursDetails | null>(null);
   const [overtimeDetails, setOvertimeDetails] = useState<OvertimeDetailsResult | null>(null);
+  const [deletingOvertimeId, setDeletingOvertimeId] = useState<string | null>(null);
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [drawerError, setDrawerError] = useState<string | null>(null);
   const [manualHoursPopupOpen, setManualHoursPopupOpen] = useState(false);
@@ -326,6 +333,34 @@ export default function PayrollPage() {
       setDrawerError(err instanceof Error ? err.message : "加载加班明细失败");
     } finally {
       setDrawerLoading(false);
+    }
+  };
+
+  const reloadOvertimeDetails = useCallback(async () => {
+    if (!drawerCoachId) return;
+    const params = new URLSearchParams({ coachId: drawerCoachId, month });
+    const response = await fetch(`/api/payroll/overtime-details?${params.toString()}`);
+    if (!response.ok) throw new Error("加载加班明细失败");
+    const data = (await response.json()) as OvertimeDetailsResult;
+    setOvertimeDetails(data);
+  }, [drawerCoachId, month]);
+
+  const handleDeleteOvertimeItem = async (id: string) => {
+    if (!window.confirm("确定删除这条加班记录？")) return;
+    setDeletingOvertimeId(id);
+    setDrawerError(null);
+    try {
+      const response = await fetch(`/api/overtime-requests/${id}`, { method: "DELETE" });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "删除失败");
+      }
+      await reloadOvertimeDetails();
+      await refreshPayroll();
+    } catch (err) {
+      setDrawerError(err instanceof Error ? err.message : "删除失败");
+    } finally {
+      setDeletingOvertimeId(null);
     }
   };
 
@@ -876,15 +911,55 @@ export default function PayrollPage() {
                   {!overtimeDetails?.items.length ? (
                     <div className="text-sm text-slate-400">暂无加班记录</div>
                   ) : (
-                    <div className="space-y-2">
-                      {overtimeDetails.items.map((item) => (
-                        <div
-                          key={item.id}
-                          className="rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700"
-                        >
-                          {formatMonthDay(item.dateStr)}：{item.hours} 小时
-                        </div>
-                      ))}
+                    <div className="mobile-scrollbar overflow-x-auto border border-slate-200 rounded-md">
+                      <table className="w-full text-sm">
+                        <thead className="bg-slate-50">
+                          <tr>
+                            <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">
+                              日期
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">
+                              时间
+                            </th>
+                            <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">
+                              总时长
+                            </th>
+                            <th className="px-3 py-2 w-10" aria-label="操作" />
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {overtimeDetails.items.map((item) => {
+                            const timeLabel =
+                              item.startTime && item.endTime
+                                ? `${item.startTime}-${item.endTime}`
+                                : "—";
+                            return (
+                              <tr key={item.id}>
+                                <td className="px-3 py-2 text-slate-800 whitespace-nowrap">
+                                  {formatMonthDay(item.dateStr)}
+                                </td>
+                                <td className="px-3 py-2 text-slate-600 whitespace-nowrap font-mono text-xs sm:text-sm">
+                                  {timeLabel}
+                                </td>
+                                <td className="px-3 py-2 text-right text-slate-700 whitespace-nowrap">
+                                  {item.hours} 小时
+                                </td>
+                                <td className="px-3 py-2 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteOvertimeItem(item.id)}
+                                    disabled={deletingOvertimeId === item.id}
+                                    className="inline-flex rounded p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                                    title="删除"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>

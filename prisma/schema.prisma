@@ -233,6 +233,8 @@ model OvertimeRequest {
   id        String   @id @default(cuid())
   coachId   String
   dateStr   String   // YYYY-MM-DD
+  startTime String   @default("") // HH:mm
+  endTime   String   @default("") // HH:mm
   hours     Float
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
