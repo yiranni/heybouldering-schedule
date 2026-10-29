@@ -15,6 +15,11 @@ import {
   getMonthDateStrBounds,
 } from "@/app/lib/scheduleHours";
 import { getManualHoursSumByCoach } from "@/app/lib/payrollManualHours.server";
+import {
+  calcOvertimePay,
+  fetchOvertimeHourlyRate,
+  getOvertimeHoursByCoachForMonth,
+} from "@/app/lib/overtime.server";
 
 type SalesTotalRow = {
   coachId: string;
@@ -172,6 +177,8 @@ export async function GET(request: NextRequest) {
     const storeMap = new Map(stores.map((store) => [store.id, store]));
     const monthHoursByCoach = calcMonthlyHoursByCoach(schedulesInMonth, storeMap);
     const manualHoursByCoach = await getManualHoursSumByCoach(month);
+    const overtimeHoursByCoach = await getOvertimeHoursByCoachForMonth(month);
+    const overtimeHourlyRate = await fetchOvertimeHourlyRate();
 
     const recordByCoach = new Map<string, PayrollRecordRow>(
       records.map((r: PayrollRecordRow): [string, PayrollRecordRow] => [r.coachId, r])
@@ -225,7 +232,9 @@ export async function GET(request: NextRequest) {
         const salesAmount = round2(salesByCoach.get(coach.id) || 0);
         const salesCommission = calcCommission(salesAmount, rules);
         const lessonFee = round2(lessonFeeByCoach.get(coach.id) || 0);
-        const totalSalary = round2((basicSalary || 0) + salesCommission + lessonFee);
+        const overtimeHours = round2(overtimeHoursByCoach.get(coach.id) || 0);
+        const overtimePay = calcOvertimePay(overtimeHours, overtimeHourlyRate);
+        const totalSalary = round2((basicSalary || 0) + salesCommission + lessonFee + overtimePay);
 
         return {
           coachId: coach.id,
@@ -237,6 +246,8 @@ export async function GET(request: NextRequest) {
           salesAmount,
           salesCommission,
           lessonFee,
+          overtimeHours,
+          overtimePay,
           totalSalary,
         };
       })

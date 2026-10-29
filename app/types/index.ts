@@ -173,5 +173,7 @@ export type PayrollRow = {
   salesAmount: number;
   salesCommission: number;
   lessonFee: number;
+  overtimeHours: number;
+  overtimePay: number;
   totalSalary: number;
 };

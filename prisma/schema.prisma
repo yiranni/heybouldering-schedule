@@ -69,6 +69,7 @@ model Coach {
   salesRecords    SalesRecord[]
   payrollRecords  PayrollRecord[]
   payrollManualHours PayrollManualHours[]
+  overtimeRequests   OvertimeRequest[]
   user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@map("coaches")
@@ -226,6 +227,20 @@ model PayrollManualHours {
   @@map("payroll_manual_hours")
   @@index([month, coachId])
   @@index([coachId])
+}
+
+model OvertimeRequest {
+  id        String   @id @default(cuid())
+  coachId   String
+  dateStr   String   // YYYY-MM-DD
+  hours     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  coach     Coach    @relation(fields: [coachId], references: [id], onDelete: Cascade)
+
+  @@map("overtime_requests")
+  @@index([coachId, dateStr])
+  @@index([dateStr])
 }
 
 model PayrollSettings {

@@ -8,6 +8,17 @@ export type SalesAccess = {
   isAdmin: boolean;
 };
 
+export async function getCoachIdForUserId(userId: string): Promise<string | null> {
+  const coach = await prisma.coach.findFirst({
+    where: {
+      archived: false,
+      userId,
+    },
+    select: { id: true },
+  });
+  return coach?.id ?? null;
+}
+
 export async function resolveSalesAccess(request: NextRequest): Promise<SalesAccess | null> {
   const session = getSessionFromRequest(request);
   if (!session) return null;
@@ -16,13 +27,6 @@ export async function resolveSalesAccess(request: NextRequest): Promise<SalesAcc
     return { session, coachId: null, isAdmin: true };
   }
 
-  const coach = await prisma.coach.findFirst({
-    where: {
-      archived: false,
-      userId: session.userId,
-    },
-    select: { id: true },
-  });
-
-  return { session, coachId: coach?.id ?? null, isAdmin: false };
+  const coachId = await getCoachIdForUserId(session.userId);
+  return { session, coachId, isAdmin: false };
 }

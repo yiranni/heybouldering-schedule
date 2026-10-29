@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
-import { createSessionToken, setSessionCookie } from '@/app/lib/auth';
+import { createSessionToken, setSessionCookie, type Role } from '@/app/lib/auth';
 import { verifyPassword } from '@/app/lib/password';
+import { getCoachIdForUserId } from '@/app/lib/salesAccess';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,26 +18,16 @@ export async function POST(request: NextRequest) {
     const normalizedAccount = String(account).trim().toLowerCase();
     const plainPassword = String(password);
 
-    const users = await prisma.$queryRaw<
-      Array<{
-        id: string;
-        accountId: string;
-        passwordHash: string;
-        role: 'ADMIN' | 'COACH';
-        name: string | null;
-      }>
-    >`
-      SELECT
-        id,
-        account_id AS "accountId",
-        "passwordHash" AS "passwordHash",
-        role,
-        name
-      FROM users
-      WHERE account_id = ${normalizedAccount}
-      LIMIT 1
-    `;
-    const user = users[0] ?? null;
+    const user = await prisma.user.findFirst({
+      where: { accountId: normalizedAccount },
+      select: {
+        id: true,
+        accountId: true,
+        passwordHash: true,
+        role: true,
+        name: true,
+      },
+    });
 
     if (!user) {
       return NextResponse.json(
@@ -53,10 +44,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const role = user.role as Role;
+    const coachId = role === 'ADMIN' ? null : await getCoachIdForUserId(user.id);
+
     const token = createSessionToken({
       id: user.id,
       accountId: user.accountId,
-      role: user.role,
+      role,
     });
 
     const response = NextResponse.json(
@@ -64,8 +58,9 @@ export async function POST(request: NextRequest) {
         user: {
           id: user.id,
           accountId: user.accountId,
-          role: user.role,
+          role,
           name: user.name,
+          coachId,
         },
         message: '登录成功'
       },

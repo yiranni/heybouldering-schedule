@@ -53,6 +53,13 @@ type PartTimeHoursDetails = {
   totalHours: number;
 };
 
+type OvertimeDetailsResult = {
+  items: Array<{ id: string; dateStr: string; hours: number }>;
+  totalHours: number;
+  hourlyRate: number;
+  overtimePay: number;
+};
+
 function buildLessonFeeDraftByLessonTypes(
   lessonTypes: LessonType[],
   apiConfig: LessonFeeConfigApiItem[]
@@ -118,13 +125,14 @@ export default function PayrollPage() {
     const currentYear = new Date().getFullYear();
     return Array.from({ length: 7 }, (_, idx) => currentYear - 3 + idx);
   }, []);
-  const [drawerMode, setDrawerMode] = useState<"sales" | "lessonFee" | "partTimeHours" | null>(null);
+  const [drawerMode, setDrawerMode] = useState<"sales" | "lessonFee" | "partTimeHours" | "overtime" | null>(null);
   const [drawerTitle, setDrawerTitle] = useState("");
   const [drawerCoachId, setDrawerCoachId] = useState<string | null>(null);
   const [salesDetails, setSalesDetails] = useState<SalesDetailItem[]>([]);
   const [drawerCommissionRate, setDrawerCommissionRate] = useState(0);
   const [lessonFeeDetails, setLessonFeeDetails] = useState<LessonFeeDetailsResult | null>(null);
   const [partTimeHoursDetails, setPartTimeHoursDetails] = useState<PartTimeHoursDetails | null>(null);
+  const [overtimeDetails, setOvertimeDetails] = useState<OvertimeDetailsResult | null>(null);
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [drawerError, setDrawerError] = useState<string | null>(null);
   const [manualHoursPopupOpen, setManualHoursPopupOpen] = useState(false);
@@ -136,9 +144,12 @@ export default function PayrollPage() {
     endTime: "20:00",
   });
   const [salaryConfigOpen, setSalaryConfigOpen] = useState(false);
-  const [salaryConfigTab, setSalaryConfigTab] = useState<"fulltime" | "parttime" | "lessonFee">("fulltime");
+  const [salaryConfigTab, setSalaryConfigTab] = useState<
+    "fulltime" | "parttime" | "lessonFee" | "overtime"
+  >("fulltime");
   const [salaryDraft, setSalaryDraft] = useState<Record<string, number>>({});
   const [partTimeHourlyRateDraft, setPartTimeHourlyRateDraft] = useState(20);
+  const [overtimeHourlyRateDraft, setOvertimeHourlyRateDraft] = useState(30);
   const [lessonFeeConfigDraft, setLessonFeeConfigDraft] = useState<Record<string, LessonFeeConfigDraft>>({});
   const [selectedCoachIds, setSelectedCoachIds] = useState<string[] | null>(null);
   const [coachFilterOpen, setCoachFilterOpen] = useState(false);
@@ -220,6 +231,7 @@ export default function PayrollPage() {
     setSalesDetails([]);
     setLessonFeeDetails(null);
     setPartTimeHoursDetails(null);
+    setOvertimeDetails(null);
     setDrawerError(null);
     setDrawerLoading(true);
     try {
@@ -247,6 +259,7 @@ export default function PayrollPage() {
     setSalesDetails([]);
     setLessonFeeDetails(null);
     setPartTimeHoursDetails(null);
+    setOvertimeDetails(null);
     setDrawerError(null);
     setDrawerLoading(true);
     try {
@@ -269,6 +282,7 @@ export default function PayrollPage() {
     setSalesDetails([]);
     setLessonFeeDetails(null);
     setPartTimeHoursDetails(null);
+    setOvertimeDetails(null);
     setDrawerError(null);
     setManualHoursPopupOpen(false);
     setManualHoursError(null);
@@ -287,6 +301,29 @@ export default function PayrollPage() {
       setPartTimeHoursDetails(data);
     } catch (err) {
       setDrawerError(err instanceof Error ? err.message : "加载兼职工时失败");
+    } finally {
+      setDrawerLoading(false);
+    }
+  };
+
+  const openOvertimeDetails = async (coachId: string, coachName: string) => {
+    setDrawerTitle(`${coachName} · ${month} 加班明细`);
+    setDrawerMode("overtime");
+    setDrawerCoachId(coachId);
+    setSalesDetails([]);
+    setLessonFeeDetails(null);
+    setPartTimeHoursDetails(null);
+    setOvertimeDetails(null);
+    setDrawerError(null);
+    setDrawerLoading(true);
+    try {
+      const params = new URLSearchParams({ coachId, month });
+      const response = await fetch(`/api/payroll/overtime-details?${params.toString()}`);
+      if (!response.ok) throw new Error("加载加班明细失败");
+      const data = (await response.json()) as OvertimeDetailsResult;
+      setOvertimeDetails(data);
+    } catch (err) {
+      setDrawerError(err instanceof Error ? err.message : "加载加班明细失败");
     } finally {
       setDrawerLoading(false);
     }
@@ -357,6 +394,15 @@ export default function PayrollPage() {
     const firstPartTime = partTimeRows[0];
     setSalaryDraft(initialSalaryDraft);
     setPartTimeHourlyRateDraft(firstPartTime?.hourlyRate ?? 20);
+    try {
+      const overtimeConfigResponse = await fetch("/api/payroll/overtime-config");
+      const overtimeConfig = overtimeConfigResponse.ok
+        ? ((await overtimeConfigResponse.json()) as { hourlyRate?: number })
+        : null;
+      setOvertimeHourlyRateDraft(Number(overtimeConfig?.hourlyRate ?? 30));
+    } catch {
+      setOvertimeHourlyRateDraft(30);
+    }
     await reloadLessonFeeConfigData();
     setSalaryConfigTab("fulltime");
     setSalaryConfigOpen(true);
@@ -400,7 +446,16 @@ export default function PayrollPage() {
       if (!configResponse.ok) {
         throw new Error("课时费配置保存失败");
       }
+      const overtimeConfigResponse = await fetch("/api/payroll/overtime-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hourlyRate: overtimeHourlyRateDraft }),
+      });
+      if (!overtimeConfigResponse.ok) {
+        throw new Error("加班费配置保存失败");
+      }
       await saveSalaryConfig(salaryDraft, partTimeHourlyRateDraft);
+      await refreshPayroll(month, { silent: true });
       alert("工资配置已保存");
     } catch {
       alert("工资配置保存失败");
@@ -549,25 +604,26 @@ export default function PayrollPage() {
                   <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">基本工资</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">销售提成</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">课时费</th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">加班费</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">总工资</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                    <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
                       加载中...
                     </td>
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
+                    <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
                       暂无可计算的教练数据
                     </td>
                   </tr>
                 ) : filteredRows.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-slate-400">
+                    <td colSpan={6} className="px-4 py-10 text-center text-slate-400">
                       没有符合筛选条件的教练
                     </td>
                   </tr>
@@ -629,6 +685,18 @@ export default function PayrollPage() {
                           </button>
                         </div>
                       </td>
+                      <td className="px-4 py-3 text-right text-sm text-slate-700">
+                        <div className="inline-flex items-center gap-1">
+                          <span>{formatCurrency(row.overtimePay ?? 0)}</span>
+                          <button
+                            onClick={() => openOvertimeDetails(row.coachId, row.coachName)}
+                            className="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-700"
+                            title="查看加班明细"
+                          >
+                            <List className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-right text-sm font-semibold text-slate-900">
                         {formatCurrency(row.totalSalary)}
                       </td>
@@ -638,7 +706,7 @@ export default function PayrollPage() {
               </tbody>
               <tfoot className="bg-slate-50 border-t border-slate-200">
                 <tr>
-                  <td colSpan={4} className="px-4 py-3 text-right text-sm font-semibold text-slate-700">
+                  <td colSpan={5} className="px-4 py-3 text-right text-sm font-semibold text-slate-700">
                     总人工成本
                   </td>
                   <td className="px-4 py-3 text-right text-sm font-bold text-emerald-700">
@@ -696,6 +764,16 @@ export default function PayrollPage() {
                           className="inline-flex items-center gap-1 text-slate-800"
                         >
                           {formatCurrency(row.lessonFee)}
+                          <List className="h-3.5 w-3.5 text-slate-400" />
+                        </button>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-400">加班费</div>
+                        <button
+                          onClick={() => openOvertimeDetails(row.coachId, row.coachName)}
+                          className="inline-flex items-center gap-1 text-slate-800"
+                        >
+                          {formatCurrency(row.overtimePay ?? 0)}
                           <List className="h-3.5 w-3.5 text-slate-400" />
                         </button>
                       </div>
@@ -781,6 +859,30 @@ export default function PayrollPage() {
                           {item.source === "manual" && (
                             <span className="ml-2 text-xs text-amber-600">手动</span>
                           )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : drawerMode === "overtime" ? (
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                    本月加班 {overtimeDetails?.totalHours ?? 0} 小时 ×{" "}
+                    {formatCurrency(overtimeDetails?.hourlyRate ?? 0)}/小时 ={" "}
+                    <span className="font-semibold text-emerald-700">
+                      {formatCurrency(overtimeDetails?.overtimePay ?? 0)}
+                    </span>
+                  </div>
+                  {!overtimeDetails?.items.length ? (
+                    <div className="text-sm text-slate-400">暂无加班记录</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {overtimeDetails.items.map((item) => (
+                        <div
+                          key={item.id}
+                          className="rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700"
+                        >
+                          {formatMonthDay(item.dateStr)}：{item.hours} 小时
                         </div>
                       ))}
                     </div>
@@ -1016,6 +1118,17 @@ export default function PayrollPage() {
               </button>
               <button
                 type="button"
+                onClick={() => setSalaryConfigTab("overtime")}
+                className={`shrink-0 px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${
+                  salaryConfigTab === "overtime"
+                    ? "border-emerald-600 text-emerald-700 bg-emerald-50"
+                    : "border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                加班费
+              </button>
+              <button
+                type="button"
                 onClick={() => setSalaryConfigTab("lessonFee")}
                 className={`shrink-0 px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${
                   salaryConfigTab === "lessonFee"
@@ -1060,6 +1173,21 @@ export default function PayrollPage() {
                       step="0.1"
                       value={partTimeHourlyRateDraft}
                       onChange={(e) => setPartTimeHourlyRateDraft(Number(e.target.value || 0))}
+                      className="w-32 px-3 py-2 border border-slate-300 rounded-md text-right text-sm"
+                    />
+                    <span className="text-sm text-slate-500">元/小时</span>
+                  </div>
+                </div>
+              ) : salaryConfigTab === "overtime" ? (
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                  <div className="text-sm font-medium text-slate-700">加班费/小时</div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      step="0.1"
+                      value={overtimeHourlyRateDraft}
+                      onChange={(e) => setOvertimeHourlyRateDraft(Number(e.target.value || 0))}
                       className="w-32 px-3 py-2 border border-slate-300 rounded-md text-right text-sm"
                     />
                     <span className="text-sm text-slate-500">元/小时</span>

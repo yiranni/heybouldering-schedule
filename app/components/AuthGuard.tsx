@@ -14,6 +14,7 @@ type AuthUser = {
   accountId: string;
   role: AuthRole;
   name?: string | null;
+  coachId?: string | null;
 };
 
 type AuthContextValue = {
