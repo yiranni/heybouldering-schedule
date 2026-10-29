@@ -19,6 +19,12 @@ const salesRecordInclude = {
   inventoryTransaction: {
     select: {
       quantityDelta: true,
+      store: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
     },
   },
 } as const;
@@ -48,11 +54,16 @@ type SalesRecordWithRelations = {
   } | null;
   inventoryTransaction: {
     quantityDelta: number;
+    store: {
+      id: string;
+      name: string;
+    };
   } | null;
 };
 
 export type SalesRecordListItem = Omit<SalesRecordWithRelations, "inventoryTransaction"> & {
   quantity: number | null;
+  store: { id: string; name: string } | null;
 };
 
 type SalesRecordCreateInput = {
@@ -110,6 +121,7 @@ export async function listSalesRecords(
     quantity: inventoryTransaction
       ? Math.abs(inventoryTransaction.quantityDelta)
       : null,
+    store: inventoryTransaction?.store ?? null,
   }));
 }
 

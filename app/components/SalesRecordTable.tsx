@@ -78,6 +78,7 @@ export default function SalesRecordTable({
             <tr>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">销售时间</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">教练</th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">售卖门店</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">销售类别</th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">产品</th>
               <th className="px-4 py-3 text-right text-xs font-semibold text-slate-600 uppercase">数量</th>
@@ -89,13 +90,13 @@ export default function SalesRecordTable({
           <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={9} className="px-4 py-10 text-center text-slate-500">
                   加载中...
                 </td>
               </tr>
             ) : records.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={9} className="px-4 py-10 text-center text-slate-400">
                   暂无销售记录
                 </td>
               </tr>
@@ -107,6 +108,7 @@ export default function SalesRecordTable({
                       {new Date(record.soldAt).toLocaleString('zh-CN')}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-700">{record.coach?.name || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-slate-700">{record.store?.name || '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{record.productCategory?.name || '-'}</td>
                     <td className="px-4 py-3 text-sm text-slate-700">{record.productName}</td>
                     <td className="px-4 py-3 text-sm text-right text-slate-700">
@@ -161,6 +163,10 @@ export default function SalesRecordTable({
                 <div>
                   <div className="text-xs text-slate-400">教练</div>
                   <div className="text-slate-700">{record.coach?.name || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-400">售卖门店</div>
+                  <div className="text-slate-700">{record.store?.name || '-'}</div>
                 </div>
                 <div>
                   <div className="text-xs text-slate-400">数量</div>

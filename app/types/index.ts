@@ -144,6 +144,10 @@ export type SalesRecord = {
     id: string;
     name: string;
   } | null;
+  store?: {
+    id: string;
+    name: string;
+  } | null;
 };
 
 export type SalesRecordFilters = {
