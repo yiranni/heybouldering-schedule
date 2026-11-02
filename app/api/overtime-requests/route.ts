@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { forbidden, unauthorized } from "@/app/lib/auth";
-import { createOvertimeRequest } from "@/app/lib/overtime.server";
+import { createOvertimeRequest, coachCanUseStoreForOvertime } from "@/app/lib/overtime.server";
 import { resolveSalesAccess } from "@/app/lib/salesAccess";
 import { calcHoursFromTimes } from "@/app/lib/scheduleHours";
+import { prisma } from "@/app/lib/prisma";
 
 function isValidDateStr(dateStr: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
@@ -28,7 +29,25 @@ export async function POST(request: NextRequest) {
     const dateStr = String(body?.dateStr || "");
     const startTime = String(body?.startTime || "");
     const endTime = String(body?.endTime || "");
+    const storeId = String(body?.storeId || "").trim();
     let hours = Number(body?.hours);
+
+    if (!storeId) {
+      return NextResponse.json({ error: "请选择加班门店" }, { status: 400 });
+    }
+
+    const storeExists = await prisma.store.findFirst({
+      where: { id: storeId, archived: false },
+      select: { id: true },
+    });
+    if (!storeExists) {
+      return NextResponse.json({ error: "门店无效" }, { status: 400 });
+    }
+
+    const canUseStore = await coachCanUseStoreForOvertime(access.coachId, storeId);
+    if (!canUseStore) {
+      return NextResponse.json({ error: "只能选择您已关联的门店" }, { status: 400 });
+    }
 
     if (!isValidDateStr(dateStr)) {
       return NextResponse.json({ error: "日期格式无效" }, { status: 400 });
@@ -46,6 +65,7 @@ export async function POST(request: NextRequest) {
 
     const created = await createOvertimeRequest({
       coachId: access.coachId,
+      storeId,
       dateStr,
       startTime,
       endTime,

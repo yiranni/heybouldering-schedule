@@ -61,6 +61,8 @@ type OvertimeDetailsResult = {
     startTime: string;
     endTime: string;
     hours: number;
+    storeId: string | null;
+    storeName: string | null;
   }>;
   totalHours: number;
   hourlyRate: number;
@@ -627,7 +629,7 @@ export default function PayrollPage() {
             <div className="min-w-0">
               <h2 className="text-lg font-semibold text-slate-800">工资计算（按月）</h2>
               <p className="text-sm text-slate-500 mt-1">
-                销售提成与课时费根据当月记录自动计算；全职工资计入主门店，兼职工时按上班门店、销售按售卖门店、课时费按上课门店统计；可按门店与教练筛选查看。
+                销售提成与课时费根据当月记录自动计算；全职工资计入主门店，兼职工时按上班门店、销售按售卖门店、课时费按上课门店、加班费按加班门店统计；可按门店与教练筛选查看。
               </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
@@ -1024,6 +1026,9 @@ export default function PayrollPage() {
                               日期
                             </th>
                             <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">
+                              门店
+                            </th>
+                            <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">
                               时间
                             </th>
                             <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">
@@ -1042,6 +1047,9 @@ export default function PayrollPage() {
                               <tr key={item.id}>
                                 <td className="px-3 py-2 text-slate-800 whitespace-nowrap">
                                   {formatMonthDay(item.dateStr)}
+                                </td>
+                                <td className="px-3 py-2 text-slate-600 whitespace-nowrap">
+                                  {item.storeName || "—"}
                                 </td>
                                 <td className="px-3 py-2 text-slate-600 whitespace-nowrap font-mono text-xs sm:text-sm">
                                   {timeLabel}

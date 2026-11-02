@@ -5,6 +5,12 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "./AuthGuard";
 
+type CoachStoreOption = {
+  id: string;
+  name: string;
+  isPrimary: boolean;
+};
+
 function todayDateStr(): string {
   const now = new Date();
   const y = now.getFullYear();
@@ -27,6 +33,21 @@ function computeHoursFromTimes(
   return Math.round(((end.getTime() - start.getTime()) / 3600000) * 100) / 100;
 }
 
+function parseCoachStores(coaches: unknown, coachId: string): CoachStoreOption[] {
+  if (!Array.isArray(coaches)) return [];
+  const coach = coaches.find(
+    (item) => item && typeof item === "object" && (item as { id?: string }).id === coachId
+  ) as { stores?: Array<{ storeId?: string; isPrimary?: boolean; store?: { id?: string; name?: string } }> } | undefined;
+  if (!coach?.stores?.length) return [];
+  return coach.stores
+    .map((link) => ({
+      id: link.store?.id || link.storeId || "",
+      name: link.store?.name || "未命名门店",
+      isPrimary: Boolean(link.isPrimary),
+    }))
+    .filter((store) => store.id);
+}
+
 export default function OvertimeRequestButton() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -34,12 +55,43 @@ export default function OvertimeRequestButton() {
   const [dateStr, setDateStr] = useState(() => todayDateStr());
   const [startTime, setStartTime] = useState("18:00");
   const [endTime, setEndTime] = useState("20:00");
+  const [storeId, setStoreId] = useState("");
+  const [storeOptions, setStoreOptions] = useState<CoachStoreOption[]>([]);
+  const [storesLoading, setStoresLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!open || !user?.coachId) return;
+    let cancelled = false;
+    const loadStores = async () => {
+      setStoresLoading(true);
+      try {
+        const response = await fetch("/api/coaches");
+        const data = await response.json().catch(() => []);
+        if (cancelled) return;
+        const options = parseCoachStores(data, user.coachId!);
+        setStoreOptions(options);
+        const primary = options.find((store) => store.isPrimary) || options[0];
+        setStoreId(primary?.id || "");
+      } catch {
+        if (!cancelled) {
+          setStoreOptions([]);
+          setStoreId("");
+        }
+      } finally {
+        if (!cancelled) setStoresLoading(false);
+      }
+    };
+    void loadStores();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, user?.coachId]);
 
   const canSubmit = useMemo(
     () => user?.role === "MANAGER" || user?.role === "COACH",
@@ -52,6 +104,7 @@ export default function OvertimeRequestButton() {
   );
 
   const coachLinked = Boolean(user?.coachId);
+  const hasStoreOptions = storeOptions.length > 0;
 
   if (!canSubmit) return null;
 
@@ -60,11 +113,17 @@ export default function OvertimeRequestButton() {
     setStartTime("18:00");
     setEndTime("20:00");
     setError(null);
+    const primary = storeOptions.find((store) => store.isPrimary) || storeOptions[0];
+    setStoreId(primary?.id || "");
   };
 
   const handleSubmit = async () => {
     if (!coachLinked) {
       setError("当前账号未关联教练档案，请联系管理员后再提交");
+      return;
+    }
+    if (!storeId) {
+      setError("请选择加班门店");
       return;
     }
     const hours = computeHoursFromTimes(dateStr, startTime, endTime);
@@ -79,7 +138,7 @@ export default function OvertimeRequestButton() {
       const response = await fetch("/api/overtime-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dateStr, startTime, endTime, hours }),
+        body: JSON.stringify({ dateStr, startTime, endTime, hours, storeId }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -127,6 +186,34 @@ export default function OvertimeRequestButton() {
               当前登录账号未关联教练档案，无法提交加班。请联系管理员在「教练列表」中绑定账号。
             </div>
           )}
+          {coachLinked && !storesLoading && !hasStoreOptions && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              您尚未关联任何门店，请联系管理员在「教练列表」中配置门店后再提交加班。
+            </div>
+          )}
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">加班门店</label>
+            <select
+              value={storeId}
+              onChange={(e) => setStoreId(e.target.value)}
+              disabled={storesLoading || !hasStoreOptions}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 disabled:bg-slate-50"
+            >
+              {storesLoading ? (
+                <option value="">加载门店...</option>
+              ) : (
+                <>
+                  {!storeId && <option value="">请选择门店</option>}
+                  {storeOptions.map((store) => (
+                    <option key={store.id} value={store.id}>
+                      {store.name}
+                      {store.isPrimary ? "（主门店）" : ""}
+                    </option>
+                  ))}
+                </>
+              )}
+            </select>
+          </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">日期</label>
             <input
@@ -176,7 +263,14 @@ export default function OvertimeRequestButton() {
             type="button"
             onClick={handleSubmit}
             disabled={
-              submitting || !dateStr || !startTime || !endTime || !coachLinked || computedHours == null
+              submitting ||
+              !dateStr ||
+              !startTime ||
+              !endTime ||
+              !storeId ||
+              !coachLinked ||
+              !hasStoreOptions ||
+              computedHours == null
             }
             className="rounded-md bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-500 disabled:opacity-50"
           >

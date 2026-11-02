@@ -5,6 +5,7 @@ import {
   type LessonRecordForFee,
 } from "@/app/lib/lessonFee";
 import { calcHoursFromTimes, calcMonthlyHoursByCoachAndStore, type ScheduleForHours, type StoreForScheduleHours } from "@/app/lib/scheduleHours";
+import { calcOvertimePay, type OvertimeRecordForMonth } from "@/app/lib/overtime.server";
 
 export type PayrollStoreSlice = {
   monthHours: number;
@@ -99,6 +100,25 @@ function ensureStoreSlice(
   return map[storeId];
 }
 
+function applyOvertimeByStore(
+  attribution: Record<string, PayrollStoreSlice>,
+  coachId: string,
+  overtimeRecords: OvertimeRecordForMonth[],
+  hourlyRate: number,
+  primaryStoreId: string | null
+): void {
+  for (const record of overtimeRecords) {
+    if (record.coachId !== coachId) continue;
+    const storeId = record.storeId || primaryStoreId;
+    if (!storeId) continue;
+    const slice = ensureStoreSlice(attribution, storeId);
+    const hours = round2(Number(record.hours) || 0);
+    if (hours <= 0) continue;
+    slice.overtimeHours = round2(slice.overtimeHours + hours);
+    slice.overtimePay = round2(slice.overtimePay + calcOvertimePay(hours, hourlyRate));
+  }
+}
+
 function calcCommission(totalSales: number, rules: Array<{ minAmount: number; commissionRate: number }>): number {
   const rule = [...rules]
     .sort((a, b) => b.minAmount - a.minAmount)
@@ -171,6 +191,8 @@ export function buildPayrollStoreAttribution(input: {
   lessonRecords: LessonRecordRow[];
   savedFeeConfig: LessonFeeConfigItem[];
   commissionRules: Array<{ minAmount: number; commissionRate: number }>;
+  overtimeRecords: OvertimeRecordForMonth[];
+  overtimeHourlyRate: number;
   payrollByCoach: Map<
     string,
     {
@@ -234,8 +256,15 @@ export function buildPayrollStoreAttribution(input: {
         slice.salesAmount = payroll.salesAmount;
         slice.salesCommission = payroll.salesCommission;
         slice.lessonFee = payroll.lessonFee;
-        slice.overtimeHours = payroll.overtimeHours;
-        slice.overtimePay = payroll.overtimePay;
+      }
+      applyOvertimeByStore(
+        attribution,
+        coach.id,
+        input.overtimeRecords,
+        input.overtimeHourlyRate,
+        primaryStoreId ?? null
+      );
+      for (const slice of Object.values(attribution)) {
         finalizeSlice(slice);
       }
       result.set(coach.id, attribution);
@@ -274,11 +303,13 @@ export function buildPayrollStoreAttribution(input: {
       }
     }
 
-    if (payroll.overtimePay > 0 && primaryStoreId) {
-      const slice = ensureStoreSlice(attribution, primaryStoreId);
-      slice.overtimeHours = payroll.overtimeHours;
-      slice.overtimePay = payroll.overtimePay;
-    }
+    applyOvertimeByStore(
+      attribution,
+      coach.id,
+      input.overtimeRecords,
+      input.overtimeHourlyRate,
+      primaryStoreId ?? null
+    );
 
     for (const slice of Object.values(attribution)) {
       finalizeSlice(slice);

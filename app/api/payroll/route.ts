@@ -19,6 +19,7 @@ import {
   calcOvertimePay,
   fetchOvertimeHourlyRate,
   getOvertimeHoursByCoachForMonth,
+  listOvertimeRecordsForMonth,
 } from "@/app/lib/overtime.server";
 import {
   buildPayrollStoreAttribution,
@@ -219,6 +220,7 @@ export async function GET(request: NextRequest) {
     const manualHoursByCoach = await getManualHoursSumByCoach(month);
     const overtimeHoursByCoach = await getOvertimeHoursByCoachForMonth(month);
     const overtimeHourlyRate = await fetchOvertimeHourlyRate();
+    const overtimeRecordsForMonth = await listOvertimeRecordsForMonth(month);
 
     const recordByCoach = new Map<string, PayrollRecordRow>(
       records.map((r: PayrollRecordRow): [string, PayrollRecordRow] => [r.coachId, r])
@@ -323,6 +325,8 @@ export async function GET(request: NextRequest) {
       lessonRecords: lessonRecordsInMonth,
       savedFeeConfig,
       commissionRules: rules,
+      overtimeRecords: overtimeRecordsForMonth,
+      overtimeHourlyRate,
       payrollByCoach,
     });
 
