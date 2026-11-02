@@ -956,7 +956,11 @@ export default function PayrollPage() {
       {drawerMode && (
         <div className="fixed inset-0 z-[60]">
           <div className="absolute inset-0 bg-black/30" onClick={closeDrawer} />
-          <aside className="absolute right-0 top-0 h-full w-full max-w-2xl bg-white shadow-2xl border-l border-slate-200 flex flex-col">
+          <aside
+            className={`absolute right-0 top-0 flex h-full w-full flex-col border-l border-slate-200 bg-white shadow-2xl ${
+              drawerMode === "lessonFee" ? "max-w-4xl" : "max-w-2xl"
+            }`}
+          >
             <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-slate-800">{drawerTitle}</h3>
               <button
