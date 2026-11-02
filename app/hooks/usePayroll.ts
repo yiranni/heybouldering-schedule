@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { PayrollRow } from '../types';
+import { PayrollRow, Store } from '../types';
+import { applyStoreFilterToPayrollRow } from '../lib/payrollStoreFilter';
 
 function getCurrentMonth(): string {
   const now = new Date();
@@ -15,6 +16,7 @@ const DEFAULT_PART_TIME_HOURLY_RATE = 20;
 export function usePayroll() {
   const [month, setMonth] = useState<string>(getCurrentMonth());
   const [rows, setRows] = useState<PayrollRow[]>([]);
+  const [stores, setStores] = useState<Pick<Store, 'id' | 'name'>[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +35,7 @@ export function usePayroll() {
       const data = await response.json();
       const nextRows: PayrollRow[] = data.rows || [];
       setRows(nextRows);
+      setStores(Array.isArray(data.stores) ? data.stores : []);
       setError(null);
       return nextRows;
     } catch (err) {
@@ -138,6 +141,7 @@ export function usePayroll() {
   return {
     month,
     rows,
+    stores,
     loading,
     saving,
     error,

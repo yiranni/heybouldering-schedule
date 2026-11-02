@@ -17,6 +17,7 @@ import {
   summarizeLessonSessionsByType,
 } from "../lib/lessonFee";
 import { formatMonthDay } from "../lib/scheduleHours";
+import { applyStoreFilterToPayrollRow } from "../lib/payrollStoreFilter";
 import { LessonType } from "../types";
 
 function formatCurrency(value: number): string {
@@ -112,6 +113,7 @@ export default function PayrollPage() {
   const {
     month,
     rows,
+    stores,
     loading,
     error,
     changeMonth,
@@ -161,11 +163,25 @@ export default function PayrollPage() {
   const [selectedCoachIds, setSelectedCoachIds] = useState<string[] | null>(null);
   const [coachFilterOpen, setCoachFilterOpen] = useState(false);
   const coachFilterRef = useRef<HTMLDivElement>(null);
+  const [selectedStoreIds, setSelectedStoreIds] = useState<string[] | null>(null);
+  const [storeFilterOpen, setStoreFilterOpen] = useState(false);
+  const storeFilterRef = useRef<HTMLDivElement>(null);
+
+  const storeFilteredRows = useMemo(
+    () => rows.map((row) => applyStoreFilterToPayrollRow(row, selectedStoreIds)),
+    [rows, selectedStoreIds]
+  );
 
   const filteredRows = useMemo(() => {
-    if (selectedCoachIds === null) return rows;
-    return rows.filter((row) => selectedCoachIds.includes(row.coachId));
-  }, [rows, selectedCoachIds]);
+    let next = storeFilteredRows;
+    if (selectedCoachIds !== null) {
+      next = next.filter((row) => selectedCoachIds.includes(row.coachId));
+    }
+    if (selectedStoreIds !== null) {
+      next = next.filter((row) => row.totalSalary > 0);
+    }
+    return next;
+  }, [storeFilteredRows, selectedCoachIds, selectedStoreIds]);
 
   const coachFilterLabel = useMemo(() => {
     if (selectedCoachIds === null) return "全部教练";
@@ -176,6 +192,15 @@ export default function PayrollPage() {
     return `已选 ${selectedCoachIds.length} 位教练`;
   }, [rows, selectedCoachIds]);
 
+  const storeFilterLabel = useMemo(() => {
+    if (selectedStoreIds === null) return "全部门店";
+    if (selectedStoreIds.length === 0) return "未选择门店";
+    if (selectedStoreIds.length === 1) {
+      return stores.find((store) => store.id === selectedStoreIds[0])?.name ?? "1 家门店";
+    }
+    return `已选 ${selectedStoreIds.length} 家门店`;
+  }, [stores, selectedStoreIds]);
+
   const totals = useMemo(() => {
     const totalLaborCost = filteredRows.reduce((sum, row) => sum + row.totalSalary, 0);
     return {
@@ -185,12 +210,16 @@ export default function PayrollPage() {
 
   useEffect(() => {
     setSelectedCoachIds(null);
+    setSelectedStoreIds(null);
   }, [month]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (coachFilterRef.current && !coachFilterRef.current.contains(event.target as Node)) {
         setCoachFilterOpen(false);
+      }
+      if (storeFilterRef.current && !storeFilterRef.current.contains(event.target as Node)) {
+        setStoreFilterOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -218,6 +247,29 @@ export default function PayrollPage() {
 
   const clearCoachFilter = () => {
     setSelectedCoachIds([]);
+  };
+
+  const toggleStoreFilter = (storeId: string) => {
+    const allIds = stores.map((store) => store.id);
+    setSelectedStoreIds((prev) => {
+      if (prev === null) {
+        return allIds.filter((id) => id !== storeId);
+      }
+      if (prev.includes(storeId)) {
+        return prev.filter((id) => id !== storeId);
+      }
+      const next = [...prev, storeId];
+      if (next.length === allIds.length) return null;
+      return next;
+    });
+  };
+
+  const selectAllStoresInFilter = () => {
+    setSelectedStoreIds(null);
+  };
+
+  const clearStoreFilter = () => {
+    setSelectedStoreIds([]);
   };
 
   const lessonFeeSessionSummary = useMemo(() => {
@@ -575,15 +627,67 @@ export default function PayrollPage() {
             <div className="min-w-0">
               <h2 className="text-lg font-semibold text-slate-800">工资计算（按月）</h2>
               <p className="text-sm text-slate-500 mt-1">
-                销售提成与课时费根据当月记录自动计算；全职基本工资与兼职时薪在「工资配置」中维护；兼职工时由班表与手动增加工时合计，保存后自动更新。
+                销售提成与课时费根据当月记录自动计算；全职工资计入主门店，兼职工时按上班门店、销售按售卖门店、课时费按上课门店统计；可按门店与教练筛选查看。
               </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+            <div className="relative shrink-0" ref={storeFilterRef}>
+              <button
+                type="button"
+                onClick={() => setStoreFilterOpen((open) => !open)}
+                disabled={loading || stores.length === 0}
+                className="inline-flex min-w-[10rem] w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+              >
+                <span className="truncate">{storeFilterLabel}</span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
+              </button>
+              {storeFilterOpen && stores.length > 0 && (
+                <div className="absolute right-0 top-full z-20 mt-1 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                  <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={clearStoreFilter}
+                      className="text-slate-500 hover:text-slate-700"
+                    >
+                      重置
+                    </button>
+                    <button
+                      type="button"
+                      onClick={selectAllStoresInFilter}
+                      className="text-emerald-600 hover:text-emerald-700"
+                    >
+                      全选
+                    </button>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto">
+                    {stores.map((store) => {
+                      const checked =
+                        selectedStoreIds === null || selectedStoreIds.includes(store.id);
+                      return (
+                        <label
+                          key={store.id}
+                          className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                        >
+                          <input
+                            type="checkbox"
+                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                            checked={checked}
+                            onChange={() => toggleStoreFilter(store.id)}
+                          />
+                          <span className="truncate">{store.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="relative shrink-0" ref={coachFilterRef}>
               <button
                 type="button"
                 onClick={() => setCoachFilterOpen((open) => !open)}
                 disabled={loading || rows.length === 0}
-                className="inline-flex min-w-[10rem] items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-w-[10rem] w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
               >
                 <span className="truncate">{coachFilterLabel}</span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
@@ -628,6 +732,7 @@ export default function PayrollPage() {
                   </div>
                 </div>
               )}
+            </div>
             </div>
           </div>
 

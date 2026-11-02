@@ -177,6 +177,36 @@ export function calcMonthlyHoursByCoach(
   return monthHoursByCoach;
 }
 
+/** coachId -> storeId -> hours（同一教练同一天同一门店的多段班表会合并） */
+export function calcMonthlyHoursByCoachAndStore(
+  schedules: ScheduleForHours[],
+  storeMap: Map<string, StoreForScheduleHours>
+): Map<string, Map<string, number>> {
+  const byCoachDateStore = new Map<string, TimeRange[]>();
+
+  for (const schedule of schedules) {
+    const key = `${schedule.coachId}__${schedule.dateStr}__${schedule.storeId}`;
+    const store = storeMap.get(schedule.storeId);
+    const { start, end } = resolveScheduleShiftTimes(schedule, store);
+    const ranges = byCoachDateStore.get(key) || [];
+    ranges.push(getDurationRange(start, end));
+    byCoachDateStore.set(key, ranges);
+  }
+
+  const result = new Map<string, Map<string, number>>();
+  for (const [key, ranges] of byCoachDateStore.entries()) {
+    const [coachId, , storeId] = key.split("__");
+    if (!coachId || !storeId) continue;
+    const minutes = mergeRanges(ranges);
+    const hours = round2(minutes / 60);
+    if (!result.has(coachId)) result.set(coachId, new Map());
+    const byStore = result.get(coachId)!;
+    byStore.set(storeId, round2((byStore.get(storeId) || 0) + hours));
+  }
+
+  return result;
+}
+
 export function calcDailyScheduleHourEntriesForCoach(
   schedules: ScheduleForHours[],
   storeMap: Map<string, StoreForScheduleHours>,

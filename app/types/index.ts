@@ -180,4 +180,18 @@ export type PayrollRow = {
   overtimeHours: number;
   overtimePay: number;
   totalSalary: number;
+  primaryStoreId?: string | null;
+  storeAttribution?: Record<
+    string,
+    {
+      monthHours: number;
+      basicSalary: number;
+      salesAmount: number;
+      salesCommission: number;
+      lessonFee: number;
+      overtimeHours: number;
+      overtimePay: number;
+      totalSalary: number;
+    }
+  >;
 };

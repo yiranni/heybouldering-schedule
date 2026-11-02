@@ -20,6 +20,11 @@ import {
   fetchOvertimeHourlyRate,
   getOvertimeHoursByCoachForMonth,
 } from "@/app/lib/overtime.server";
+import {
+  buildPayrollStoreAttribution,
+  resolvePrimaryStoreId,
+  type SalesByCoachStoreRow,
+} from "@/app/lib/payrollStoreAttribution.server";
 
 type SalesTotalRow = {
   coachId: string;
@@ -92,7 +97,7 @@ export async function GET(request: NextRequest) {
     const { start, end } = getMonthRange(month);
     const { startDate, endDate } = getMonthDateStrBounds(month);
 
-    const [coaches, records, rules, salesRows, lessonTypes, lessonRecordsInMonth, savedFeeConfig] =
+    const [coaches, records, rules, salesRows, salesByCoachStoreRows, lessonTypes, lessonRecordsInMonth, savedFeeConfig, coachStoreLinks, manualHourRows, storeOptions] =
       await Promise.all([
       prisma.$queryRaw<CoachRow[]>`
         SELECT
@@ -133,6 +138,19 @@ export async function GET(request: NextRequest) {
           AND (sr."inventoryTransactionId" IS NULL OR it.type = 'SALE')
         GROUP BY sr."coachId"
       `,
+      prisma.$queryRaw<SalesByCoachStoreRow[]>`
+        SELECT
+          sr."coachId" AS "coachId",
+          it."storeId" AS "storeId",
+          COALESCE(SUM(sr.amount), 0)::float AS total
+        FROM sales_records sr
+        LEFT JOIN inventory_transactions it ON it.id = sr."inventoryTransactionId"
+        WHERE sr."soldAt" >= ${start}
+          AND sr."soldAt" <= ${end}
+          AND sr."coachId" IS NOT NULL
+          AND (sr."inventoryTransactionId" IS NULL OR it.type = 'SALE')
+        GROUP BY sr."coachId", it."storeId"
+      `,
       prisma.lessonType.findMany({
         where: { archived: false },
         select: { id: true, name: true },
@@ -141,14 +159,36 @@ export async function GET(request: NextRequest) {
       prisma.lessonRecord.findMany({
         where: getLessonRecordMonthDateFilter(month),
         select: {
+          id: true,
           coachId: true,
           dateStr: true,
           lessonTypeId: true,
           studentCount: true,
+          storeId: true,
         },
         orderBy: [{ dateStr: "asc" }, { createdAt: "asc" }],
       }),
       fetchLessonFeeConfig(),
+      prisma.coachStore.findMany({
+        select: {
+          coachId: true,
+          storeId: true,
+          isPrimary: true,
+        },
+      }),
+      prisma.payrollManualHours.findMany({
+        where: { month },
+        select: {
+          coachId: true,
+          startTime: true,
+          endTime: true,
+        },
+      }),
+      prisma.store.findMany({
+        where: { archived: false },
+        select: { id: true, name: true },
+        orderBy: { createdAt: "asc" },
+      }),
     ]);
 
     const schedulesInMonth = await prisma.schedule.findMany({
@@ -253,12 +293,52 @@ export async function GET(request: NextRequest) {
       })
     );
 
+    const payrollByCoach = new Map(
+      rows.map((row) => [
+        row.coachId,
+        {
+          monthHours: row.monthHours,
+          hourlyRate: row.hourlyRate,
+          basicSalary: row.basicSalary,
+          salesAmount: row.salesAmount,
+          salesCommission: row.salesCommission,
+          lessonFee: row.lessonFee,
+          overtimeHours: row.overtimeHours,
+          overtimePay: row.overtimePay,
+        },
+      ])
+    );
+
+    const storeAttributionByCoach = buildPayrollStoreAttribution({
+      coaches: coaches.map((coach) => ({
+        id: coach.id,
+        employmentType: coach.employmentType === "PART_TIME" ? "PART_TIME" : "FULL_TIME",
+      })),
+      coachStoreLinks: coachStoreLinks,
+      schedules: schedulesInMonth,
+      storeMap,
+      manualHours: manualHourRows,
+      salesByCoachStore: salesByCoachStoreRows,
+      lessonTypes,
+      lessonRecords: lessonRecordsInMonth,
+      savedFeeConfig,
+      commissionRules: rules,
+      payrollByCoach,
+    });
+
+    const rowsWithStores = rows.map((row) => ({
+      ...row,
+      primaryStoreId: resolvePrimaryStoreId(coachStoreLinks, row.coachId),
+      storeAttribution: storeAttributionByCoach.get(row.coachId) || {},
+    }));
+
     return NextResponse.json({
       month,
-      rows,
+      rows: rowsWithStores,
+      stores: storeOptions,
       totals: {
         totalLaborCost: round2(
-          rows.reduce((sum: number, r: { totalSalary: number }) => sum + r.totalSalary, 0)
+          rowsWithStores.reduce((sum: number, r: { totalSalary: number }) => sum + r.totalSalary, 0)
         ),
       },
     });
