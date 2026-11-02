@@ -325,6 +325,9 @@ export default function PayrollPage() {
     setDrawerLoading(true);
     try {
       const params = new URLSearchParams({ coachId, month });
+      if (selectedStoreIds !== null && selectedStoreIds.length > 0) {
+        params.set("storeIds", selectedStoreIds.join(","));
+      }
       const response = await fetch(`/api/payroll/lesson-fee-details?${params.toString()}`);
       if (!response.ok) throw new Error("加载课时费明细失败");
       const data = (await response.json()) as LessonFeeDetailsResult;
@@ -1143,6 +1146,7 @@ export default function PayrollPage() {
                       <thead className="bg-slate-50">
                         <tr>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">日期</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">上课门店</th>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">课程类型</th>
                           <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">人数</th>
                           <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">免计</th>
@@ -1157,6 +1161,9 @@ export default function PayrollPage() {
                             className={item.freeStudentCount > 0 ? "bg-amber-50/60" : undefined}
                           >
                             <td className="px-3 py-2 text-slate-600">{item.dateStr}</td>
+                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">
+                              {item.storeName || "—"}
+                            </td>
                             <td className="px-3 py-2 text-slate-800">{item.lessonTypeName}</td>
                             <td className="px-3 py-2 text-right text-slate-700">{item.studentCount}</td>
                             <td className="px-3 py-2 text-right text-amber-700">
@@ -1171,7 +1178,7 @@ export default function PayrollPage() {
                       </tbody>
                       <tfoot className="bg-slate-50 border-t border-slate-200">
                         <tr>
-                          <td colSpan={5} className="px-3 py-2 text-right text-xs font-semibold text-slate-600">
+                          <td colSpan={6} className="px-3 py-2 text-right text-xs font-semibold text-slate-600">
                             合计
                           </td>
                           <td className="px-3 py-2 text-right text-sm font-bold text-emerald-700">

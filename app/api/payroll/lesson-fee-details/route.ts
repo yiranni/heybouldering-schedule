@@ -1,13 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { forbidden, unauthorized } from "@/app/lib/auth";
-import { calcCoachLessonFeeDetails, resolveLessonFeeConfigMap } from "@/app/lib/lessonFee";
+import {
+  calcCoachLessonFeeDetails,
+  filterLessonFeeDetailsByStores,
+  resolveLessonFeeConfigMap,
+} from "@/app/lib/lessonFee";
 import { fetchLessonFeeConfig } from "@/app/lib/lessonFee.server";
+import { resolvePrimaryStoreId } from "@/app/lib/payrollStoreAttribution.server";
 import { getLessonRecordMonthDateFilter } from "@/app/lib/scheduleHours";
 import { resolveSalesAccess } from "@/app/lib/salesAccess";
 
 function isValidMonth(month: string): boolean {
   return /^\d{4}-\d{2}$/.test(month);
+}
+
+function parseStoreIds(searchParams: URLSearchParams): string[] | null {
+  const raw = searchParams.get("storeIds");
+  if (!raw) return null;
+  const ids = raw
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean);
+  return ids.length > 0 ? ids : null;
 }
 
 export async function GET(request: NextRequest) {
@@ -19,6 +34,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const month = searchParams.get("month") || "";
     const coachId = searchParams.get("coachId") || "";
+    const filterStoreIds = parseStoreIds(searchParams);
 
     if (!isValidMonth(month)) {
       return NextResponse.json({ error: "month 格式应为 YYYY-MM" }, { status: 400 });
@@ -27,13 +43,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "coachId 为必填项" }, { status: 400 });
     }
 
-    const [coach, lessonTypes, savedFeeConfig, lessonRecords] = await Promise.all([
+    const [coach, coachStoreLinks, lessonTypes, savedFeeConfig, lessonRecords] = await Promise.all([
       prisma.$queryRaw<Array<{ id: string; employmentType: string }>>`
         SELECT id, "employmentType" AS "employmentType"
         FROM coaches
         WHERE id = ${coachId} AND archived = false
         LIMIT 1
       `,
+      prisma.coachStore.findMany({
+        where: { coachId },
+        select: { coachId: true, storeId: true, isPrimary: true },
+      }),
       prisma.lessonType.findMany({
         where: { archived: false },
         select: { id: true, name: true },
@@ -50,8 +70,12 @@ export async function GET(request: NextRequest) {
           dateStr: true,
           lessonTypeId: true,
           studentCount: true,
+          storeId: true,
           lessonType: {
             select: { name: true },
+          },
+          store: {
+            select: { id: true, name: true },
           },
         },
         orderBy: [{ dateStr: "asc" }, { createdAt: "asc" }],
@@ -62,23 +86,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "教练不存在" }, { status: 404 });
     }
 
+    const primaryStoreId = resolvePrimaryStoreId(coachStoreLinks, coachId);
     const employmentType =
       coach[0].employmentType === "PART_TIME" ? "PART_TIME" : "FULL_TIME";
     const feeConfigMap = resolveLessonFeeConfigMap(lessonTypes, savedFeeConfig);
     const lessonTypeNameById = new Map(lessonTypes.map((item) => [item.id, item.name]));
 
-    const details = calcCoachLessonFeeDetails(
+    let details = calcCoachLessonFeeDetails(
       lessonRecords.map((record) => ({
         id: record.id,
         dateStr: record.dateStr,
         lessonTypeId: record.lessonTypeId,
         studentCount: record.studentCount,
         lessonTypeName: record.lessonType.name,
+        storeId: record.storeId,
+        storeName: record.store?.name ?? null,
+        effectiveStoreId: record.storeId || primaryStoreId,
       })),
       feeConfigMap,
       employmentType,
       lessonTypeNameById
     );
+
+    if (filterStoreIds) {
+      details = filterLessonFeeDetailsByStores(details, filterStoreIds);
+    }
 
     return NextResponse.json(details);
   } catch (error) {

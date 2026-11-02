@@ -165,6 +165,10 @@ export type LessonFeeRecordDetail = {
   billableStudentCount: number;
   fee: number;
   calculationNote: string;
+  storeId: string | null;
+  storeName: string | null;
+  /** 用于门店筛选：上课门店，未填时回退主门店 */
+  effectiveStoreId: string | null;
 };
 
 export type LessonFeeDetailsResult = {
@@ -309,7 +313,34 @@ export function calcCoachLessonFee(
 type LessonRecordWithMeta = LessonRecordForFee & {
   id?: string;
   lessonTypeName?: string;
+  storeId?: string | null;
+  storeName?: string | null;
+  effectiveStoreId?: string | null;
 };
+
+export function filterLessonFeeDetailsByStores(
+  details: LessonFeeDetailsResult,
+  storeIds: string[]
+): LessonFeeDetailsResult {
+  if (storeIds.length === 0) return details;
+  const allowed = new Set(storeIds);
+  const items = details.items.filter(
+    (item) => item.effectiveStoreId != null && allowed.has(item.effectiveStoreId)
+  );
+  const totalFee = roundFee(items.reduce((sum, item) => sum + item.fee, 0));
+  const noviceFreeSummary = details.noviceFreeSummary
+    ? {
+        quota: details.noviceFreeSummary.quota,
+        used: items.reduce((sum, item) => sum + item.freeStudentCount, 0),
+      }
+    : null;
+  return {
+    ...details,
+    items,
+    totalFee,
+    noviceFreeSummary,
+  };
+}
 
 export function calcCoachLessonFeeDetails(
   records: LessonRecordWithMeta[],
@@ -354,6 +385,9 @@ export function calcCoachLessonFeeDetails(
       billableStudentCount: breakdown.billableStudentCount,
       fee: breakdown.fee,
       calculationNote: breakdown.calculationNote,
+      storeId: record.storeId ?? null,
+      storeName: record.storeName ?? null,
+      effectiveStoreId: record.effectiveStoreId ?? record.storeId ?? null,
     });
   }
 
