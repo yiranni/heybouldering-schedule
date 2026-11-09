@@ -33,6 +33,7 @@ type SalesDetailItem = {
   quantity?: number | null;
   note?: string | null;
   productCategory?: { id: string; name: string } | null;
+  store?: { id: string; name: string } | null;
 };
 
 type LessonFeeConfigApiItem = LessonFeeConfigDraft & {
@@ -1106,6 +1107,7 @@ export default function PayrollPage() {
                       <thead className="bg-slate-50">
                         <tr>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">时间</th>
+                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">售卖门店</th>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">类别</th>
                           <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">产品</th>
                           <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">数量</th>
@@ -1116,8 +1118,11 @@ export default function PayrollPage() {
                       <tbody className="divide-y divide-slate-100">
                         {salesDetails.map((item) => (
                           <tr key={item.id}>
-                            <td className="px-3 py-2 text-slate-600">
+                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">
                               {new Date(item.soldAt).toLocaleString("zh-CN")}
+                            </td>
+                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">
+                              {item.store?.name || "—"}
                             </td>
                             <td className="px-3 py-2 text-slate-600">{item.productCategory?.name || "其他"}</td>
                             <td className="px-3 py-2 text-slate-800">{item.productName}</td>
