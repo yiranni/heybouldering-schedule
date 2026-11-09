@@ -1,5 +1,6 @@
 [build]
-  command = "npx prisma generate && npx prisma db push --skip-generate && npm run build"
+  # 构建阶段只生成 Prisma Client 并编译；schema 同步请在部署前对生产库手动执行 `npm run db:push`
+  command = "npm run build"
   publish = ".next"
 
 [[plugins]]
