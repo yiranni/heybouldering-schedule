@@ -962,7 +962,7 @@ export default function PayrollPage() {
           <div className="absolute inset-0 bg-black/30" onClick={closeDrawer} />
           <aside
             className={`absolute right-0 top-0 flex h-full w-full flex-col border-l border-slate-200 bg-white shadow-2xl ${
-              drawerMode === "lessonFee" ? "max-w-4xl" : "max-w-2xl"
+              drawerMode === "lessonFee" || drawerMode === "sales" ? "max-w-4xl" : "max-w-2xl"
             }`}
           >
             <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
@@ -1102,37 +1102,37 @@ export default function PayrollPage() {
                 salesDetails.length === 0 ? (
                   <div className="text-sm text-slate-400">暂无销售记录</div>
                 ) : (
-                  <div className="mobile-scrollbar overflow-x-auto border border-slate-200 rounded-md">
-                    <table className="w-full text-sm">
+                  <div className="mobile-scrollbar w-full overflow-x-auto border border-slate-200 rounded-md">
+                    <table className="w-full min-w-[44rem] text-sm">
                       <thead className="bg-slate-50">
                         <tr>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">时间</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">售卖门店</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">类别</th>
-                          <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">产品</th>
-                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">数量</th>
-                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">金额</th>
-                          <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">提成</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-600">时间</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-600">售卖门店</th>
+                          <th className="px-4 py-2.5 text-left text-xs font-semibold text-slate-600">类别</th>
+                          <th className="min-w-[8rem] px-4 py-2.5 text-left text-xs font-semibold text-slate-600">产品</th>
+                          <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-600">数量</th>
+                          <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-600">金额</th>
+                          <th className="px-4 py-2.5 text-right text-xs font-semibold text-slate-600">提成</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {salesDetails.map((item) => (
                           <tr key={item.id}>
-                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">
+                            <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">
                               {new Date(item.soldAt).toLocaleString("zh-CN")}
                             </td>
-                            <td className="px-3 py-2 text-slate-600 whitespace-nowrap">
+                            <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">
                               {item.store?.name || "—"}
                             </td>
-                            <td className="px-3 py-2 text-slate-600">{item.productCategory?.name || "其他"}</td>
-                            <td className="px-3 py-2 text-slate-800">{item.productName}</td>
-                            <td className="px-3 py-2 text-right text-slate-700">
+                            <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{item.productCategory?.name || "其他"}</td>
+                            <td className="min-w-[8rem] px-4 py-2.5 text-slate-800">{item.productName}</td>
+                            <td className="px-4 py-2.5 text-right text-slate-700 whitespace-nowrap">
                               {item.quantity ?? "—"}
                             </td>
-                            <td className="px-3 py-2 text-right text-slate-700">
+                            <td className="px-4 py-2.5 text-right text-slate-700 whitespace-nowrap">
                               {formatCurrency(item.amount)}
                             </td>
-                            <td className="px-3 py-2 text-right text-emerald-700 font-medium">
+                            <td className="px-4 py-2.5 text-right text-emerald-700 font-medium whitespace-nowrap">
                               {formatCurrency(Number((item.amount * drawerCommissionRate).toFixed(2)))}
                             </td>
                           </tr>
