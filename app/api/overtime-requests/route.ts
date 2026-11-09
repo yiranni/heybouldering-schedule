@@ -17,20 +17,29 @@ export async function POST(request: NextRequest) {
   try {
     const access = await resolveSalesAccess(request);
     if (!access) return unauthorized("请先登录");
-    if (access.isAdmin) return forbidden("管理员无需提交加班申请");
-    if (access.session.role !== "MANAGER" && access.session.role !== "COACH") {
-      return forbidden("无权限提交加班申请");
-    }
-    if (!access.coachId) {
-      return NextResponse.json({ error: "当前账号未关联教练，无法提交加班申请" }, { status: 400 });
+    if (!access.isAdmin) {
+      return forbidden("仅管理员可录入加班记录");
     }
 
     const body = await request.json();
+    const coachId = String(body?.coachId || "").trim();
     const dateStr = String(body?.dateStr || "");
     const startTime = String(body?.startTime || "");
     const endTime = String(body?.endTime || "");
     const storeId = String(body?.storeId || "").trim();
     let hours = Number(body?.hours);
+
+    if (!coachId) {
+      return NextResponse.json({ error: "coachId 为必填项" }, { status: 400 });
+    }
+
+    const coach = await prisma.coach.findFirst({
+      where: { id: coachId, archived: false },
+      select: { id: true },
+    });
+    if (!coach) {
+      return NextResponse.json({ error: "教练不存在" }, { status: 400 });
+    }
 
     if (!storeId) {
       return NextResponse.json({ error: "请选择加班门店" }, { status: 400 });
@@ -44,9 +53,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "门店无效" }, { status: 400 });
     }
 
-    const canUseStore = await coachCanUseStoreForOvertime(access.coachId, storeId);
+    const canUseStore = await coachCanUseStoreForOvertime(coachId, storeId);
     if (!canUseStore) {
-      return NextResponse.json({ error: "只能选择您已关联的门店" }, { status: 400 });
+      return NextResponse.json({ error: "该教练未关联所选门店" }, { status: 400 });
     }
 
     if (!isValidDateStr(dateStr)) {
@@ -64,7 +73,7 @@ export async function POST(request: NextRequest) {
     }
 
     const created = await createOvertimeRequest({
-      coachId: access.coachId,
+      coachId,
       storeId,
       dateStr,
       startTime,

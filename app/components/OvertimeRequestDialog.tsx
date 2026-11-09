@@ -1,9 +1,8 @@
 "use client";
 
-import { Clock, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useAuth } from "./AuthGuard";
 
 type CoachStoreOption = {
   id: string;
@@ -11,7 +10,7 @@ type CoachStoreOption = {
   isPrimary: boolean;
 };
 
-function todayDateStr(): string {
+export function todayDateStr(): string {
   const now = new Date();
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, "0");
@@ -19,7 +18,7 @@ function todayDateStr(): string {
   return `${y}-${m}-${d}`;
 }
 
-function computeHoursFromTimes(
+export function computeHoursFromTimes(
   dateStr: string,
   startTime: string,
   endTime: string
@@ -48,9 +47,23 @@ function parseCoachStores(coaches: unknown, coachId: string): CoachStoreOption[]
     .filter((store) => store.id);
 }
 
-export default function OvertimeRequestButton() {
-  const { user } = useAuth();
-  const [open, setOpen] = useState(false);
+type OvertimeRequestDialogProps = {
+  open: boolean;
+  coachId: string;
+  onClose: () => void;
+  onSubmitted?: () => void | Promise<void>;
+  title?: string;
+  submitLabel?: string;
+};
+
+export default function OvertimeRequestDialog({
+  open,
+  coachId,
+  onClose,
+  onSubmitted,
+  title = "添加加班",
+  submitLabel = "保存",
+}: OvertimeRequestDialogProps) {
   const [mounted, setMounted] = useState(false);
   const [dateStr, setDateStr] = useState(() => todayDateStr());
   const [startTime, setStartTime] = useState("18:00");
@@ -66,7 +79,11 @@ export default function OvertimeRequestButton() {
   }, []);
 
   useEffect(() => {
-    if (!open || !user?.coachId) return;
+    if (!open || !coachId) return;
+    setDateStr(todayDateStr());
+    setStartTime("18:00");
+    setEndTime("20:00");
+    setError(null);
     let cancelled = false;
     const loadStores = async () => {
       setStoresLoading(true);
@@ -74,7 +91,7 @@ export default function OvertimeRequestButton() {
         const response = await fetch("/api/coaches");
         const data = await response.json().catch(() => []);
         if (cancelled) return;
-        const options = parseCoachStores(data, user.coachId!);
+        const options = parseCoachStores(data, coachId);
         setStoreOptions(options);
         const primary = options.find((store) => store.isPrimary) || options[0];
         setStoreId(primary?.id || "");
@@ -91,35 +108,18 @@ export default function OvertimeRequestButton() {
     return () => {
       cancelled = true;
     };
-  }, [open, user?.coachId]);
-
-  const canSubmit = useMemo(
-    () => user?.role === "MANAGER" || user?.role === "COACH",
-    [user?.role]
-  );
+  }, [open, coachId]);
 
   const computedHours = useMemo(
     () => computeHoursFromTimes(dateStr, startTime, endTime),
     [dateStr, startTime, endTime]
   );
 
-  const coachLinked = Boolean(user?.coachId);
   const hasStoreOptions = storeOptions.length > 0;
 
-  if (!canSubmit) return null;
-
-  const resetForm = () => {
-    setDateStr(todayDateStr());
-    setStartTime("18:00");
-    setEndTime("20:00");
-    setError(null);
-    const primary = storeOptions.find((store) => store.isPrimary) || storeOptions[0];
-    setStoreId(primary?.id || "");
-  };
-
   const handleSubmit = async () => {
-    if (!coachLinked) {
-      setError("当前账号未关联教练档案，请联系管理员后再提交");
+    if (!coachId) {
+      setError("未选择教练");
       return;
     }
     if (!storeId) {
@@ -138,23 +138,24 @@ export default function OvertimeRequestButton() {
       const response = await fetch("/api/overtime-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dateStr, startTime, endTime, hours, storeId }),
+        body: JSON.stringify({ coachId, dateStr, startTime, endTime, hours, storeId }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(data.error || "提交失败");
+        throw new Error(data.error || "保存失败");
       }
-      setOpen(false);
-      resetForm();
-      alert("加班申请已提交");
+      onClose();
+      await onSubmitted?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "提交失败");
+      setError(err instanceof Error ? err.message : "保存失败");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const modal = open ? (
+  if (!open || !mounted) return null;
+
+  const modal = (
     <div
       className="fixed inset-0 z-[200] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
       role="dialog"
@@ -167,12 +168,12 @@ export default function OvertimeRequestButton() {
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <h3 id="overtime-request-title" className="text-base font-semibold text-slate-800">
-            加班申请
+            {title}
           </h3>
           <button
             type="button"
             onClick={() => {
-              setOpen(false);
+              onClose();
               setError(null);
             }}
             className="rounded p-1 text-slate-500 hover:bg-slate-100"
@@ -181,14 +182,9 @@ export default function OvertimeRequestButton() {
           </button>
         </div>
         <div className="space-y-3 px-5 py-4">
-          {!coachLinked && (
+          {!storesLoading && !hasStoreOptions && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              当前登录账号未关联教练档案，无法提交加班。请联系管理员在「教练列表」中绑定账号。
-            </div>
-          )}
-          {coachLinked && !storesLoading && !hasStoreOptions && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              您尚未关联任何门店，请联系管理员在「教练列表」中配置门店后再提交加班。
+              该教练尚未关联任何门店，请先在「教练列表」中配置门店。
             </div>
           )}
           <div>
@@ -252,7 +248,7 @@ export default function OvertimeRequestButton() {
           <button
             type="button"
             onClick={() => {
-              setOpen(false);
+              onClose();
               setError(null);
             }}
             className="rounded-md border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
@@ -268,35 +264,17 @@ export default function OvertimeRequestButton() {
               !startTime ||
               !endTime ||
               !storeId ||
-              !coachLinked ||
               !hasStoreOptions ||
               computedHours == null
             }
             className="rounded-md bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-500 disabled:opacity-50"
           >
-            {submitting ? "提交中..." : "提交申请"}
+            {submitting ? "保存中..." : submitLabel}
           </button>
         </div>
       </div>
     </div>
-  ) : null;
-
-  return (
-    <>
-      <button
-        type="button"
-        onClick={() => {
-          resetForm();
-          setOpen(true);
-        }}
-        className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-600 bg-slate-800 px-2.5 py-1.5 text-slate-200 transition-colors hover:bg-slate-700 hover:text-white sm:gap-1.5 sm:px-3"
-        title="加班申请"
-      >
-        <Clock className="h-4 w-4" />
-        <span className="hidden text-sm sm:inline">加班申请</span>
-      </button>
-
-      {mounted && modal ? createPortal(modal, document.body) : null}
-    </>
   );
+
+  return createPortal(modal, document.body);
 }

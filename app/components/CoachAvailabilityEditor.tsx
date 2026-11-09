@@ -192,7 +192,7 @@ export default function CoachAvailabilityEditor({ coach, onUpdate, canEdit, head
     <div className="mt-2 p-3 bg-slate-50 rounded-md space-y-3">
       <div className="text-xs font-medium text-slate-700 mb-2">每天可上的班次</div>
 
-      <div className="space-y-1.5">
+      <div className="overflow-hidden rounded-md border border-slate-200 bg-white divide-y divide-slate-200">
         {DAYS_OF_WEEK.map((day) => {
           const dayConfig = weekSchedule[day.value];
 
@@ -209,8 +209,8 @@ export default function CoachAvailabilityEditor({ coach, onUpdate, canEdit, head
           const hasAnyShift = dayConfig && Object.values(dayConfig).some(val => val === true);
 
           return (
-            <div key={day.value} className="flex items-center gap-2">
-              <span className="text-xs text-slate-600 w-12 flex-shrink-0">{day.label}</span>
+            <div key={day.value} className="flex items-center gap-2 px-2.5 py-2.5">
+              <span className="text-xs font-medium text-slate-700 w-12 flex-shrink-0">{day.label}</span>
               <div className="flex gap-1 flex-wrap">
                 {applicableShifts.map(shift => {
                   const isActive = dayConfig?.[shift.id] === true;

@@ -4,6 +4,7 @@ import { Calendar, ChevronDown, Clock, List, Plus, Settings, Trash2, X } from "l
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TopNavMenu from "../components/TopNavMenu";
 import UserInfo from "../components/UserInfo";
+import OvertimeRequestDialog from "../components/OvertimeRequestDialog";
 import { useAuth } from "../components/AuthGuard";
 import { usePayroll } from "../hooks/usePayroll";
 import { useLessonTypes } from "../hooks/useLessonTypes";
@@ -144,6 +145,7 @@ export default function PayrollPage() {
   const [partTimeHoursDetails, setPartTimeHoursDetails] = useState<PartTimeHoursDetails | null>(null);
   const [overtimeDetails, setOvertimeDetails] = useState<OvertimeDetailsResult | null>(null);
   const [deletingOvertimeId, setDeletingOvertimeId] = useState<string | null>(null);
+  const [overtimeAddOpen, setOvertimeAddOpen] = useState(false);
   const [drawerLoading, setDrawerLoading] = useState(false);
   const [drawerError, setDrawerError] = useState<string | null>(null);
   const [manualHoursPopupOpen, setManualHoursPopupOpen] = useState(false);
@@ -460,6 +462,7 @@ export default function PayrollPage() {
     setDrawerError(null);
     setManualHoursPopupOpen(false);
     setManualHoursError(null);
+    setOvertimeAddOpen(false);
   };
 
   const fullTimeRows = useMemo(
@@ -1015,6 +1018,17 @@ export default function PayrollPage() {
                 </div>
               ) : drawerMode === "overtime" ? (
                 <div className="space-y-4">
+                  <div className="flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setOvertimeAddOpen(true)}
+                      disabled={!drawerCoachId}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Plus className="h-4 w-4" />
+                      添加加班
+                    </button>
+                  </div>
                   <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
                     本月加班 {overtimeDetails?.totalHours ?? 0} 小时 ×{" "}
                     {formatCurrency(overtimeDetails?.hourlyRate ?? 0)}/小时 ={" "}
@@ -1199,6 +1213,20 @@ export default function PayrollPage() {
             </div>
           </aside>
         </div>
+      )}
+
+      {drawerCoachId && (
+        <OvertimeRequestDialog
+          open={overtimeAddOpen}
+          coachId={drawerCoachId}
+          onClose={() => setOvertimeAddOpen(false)}
+          onSubmitted={async () => {
+            await reloadOvertimeDetails();
+            await refreshPayroll();
+          }}
+          title="添加加班"
+          submitLabel="保存"
+        />
       )}
 
       {manualHoursPopupOpen && drawerMode === "partTimeHours" && (

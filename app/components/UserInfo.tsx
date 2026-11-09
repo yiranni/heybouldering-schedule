@@ -2,7 +2,6 @@
 
 import { LogOut, User } from 'lucide-react';
 import { useAuth } from './AuthGuard';
-import OvertimeRequestButton from './OvertimeRequestButton';
 
 export default function UserInfo() {
   const { user, logout } = useAuth();
@@ -18,7 +17,6 @@ export default function UserInfo() {
           {displayName}
         </span>
       </div>
-      <OvertimeRequestButton />
       <button
         onClick={logout}
         className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
