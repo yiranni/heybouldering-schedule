@@ -161,6 +161,20 @@ export type ProductCategory = {
   name: string;
 };
 
+export type EmployeeTrendPoint = {
+  month: string;
+  monthLabel: string;
+  totalSalary: number;
+  salesAmount: number;
+  gap: number;
+};
+
+export type EmployeeTrendSeries = {
+  coachId: string;
+  coachName: string;
+  points: EmployeeTrendPoint[];
+};
+
 export type CommissionRule = {
   id: string;
   minAmount: number;

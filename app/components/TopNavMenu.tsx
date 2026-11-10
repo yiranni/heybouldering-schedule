@@ -5,16 +5,22 @@ import { ChevronDown } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 type TopNavMenuProps = {
-  current: 'schedule' | 'sales' | 'payroll' | 'lessons' | 'inventory';
+  current: 'schedule' | 'sales' | 'payroll' | 'lessons' | 'inventory' | 'employeeAnalytics';
   isAdmin?: boolean;
 };
 
-const items: Array<{ id: 'schedule' | 'sales' | 'payroll' | 'lessons' | 'inventory'; label: string; href: string; adminOnly?: boolean }> = [
+const items: Array<{
+  id: TopNavMenuProps['current'];
+  label: string;
+  href: string;
+  adminOnly?: boolean;
+}> = [
   { id: 'schedule', label: '排班', href: '/' },
   { id: 'sales', label: '销售记录', href: '/sales' },
   { id: 'lessons', label: '课程记录', href: '/lessons' },
   { id: 'inventory', label: '库存管理', href: '/inventory' },
   { id: 'payroll', label: '工资计算', href: '/payroll', adminOnly: true },
+  { id: 'employeeAnalytics', label: '员工分析', href: '/analytics/employees', adminOnly: true },
 ];
 
 export default function TopNavMenu({ current, isAdmin = false }: TopNavMenuProps) {
