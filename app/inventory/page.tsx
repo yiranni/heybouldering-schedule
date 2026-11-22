@@ -188,7 +188,11 @@ export default function InventoryPage() {
             <div className="shrink-0 bg-emerald-500 p-2 rounded-lg">
               <Package className="w-6 h-6 text-white" />
             </div>
-            <TopNavMenu current="inventory" isAdmin={user?.role === "ADMIN"} />
+            <TopNavMenu
+              current="inventory"
+              isAdmin={user?.role === "ADMIN"}
+              showPayroll={user?.role === "ADMIN" || !!user?.canViewSelfPayroll}
+            />
           </div>
 
           <div className="mobile-scrollbar -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0">

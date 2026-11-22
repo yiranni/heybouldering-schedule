@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/app/lib/prisma';
 import { createSessionToken, setSessionCookie, type Role } from '@/app/lib/auth';
 import { verifyPassword } from '@/app/lib/password';
-import { getCoachIdForUserId } from '@/app/lib/salesAccess';
+import { getSelfPayrollEligibility } from '@/app/lib/payrollSelfAccess.server';
+import { getCoachIdForUserId, isArchivedEmployeeUser } from '@/app/lib/salesAccess';
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,7 +46,15 @@ export async function POST(request: NextRequest) {
     }
 
     const role = user.role as Role;
+    if (role !== 'ADMIN' && (await isArchivedEmployeeUser(user.id))) {
+      return NextResponse.json(
+        { error: '该员工已归档，无法登录' },
+        { status: 403 }
+      );
+    }
     const coachId = role === 'ADMIN' ? null : await getCoachIdForUserId(user.id);
+    const selfPayroll =
+      role === 'ADMIN' ? { allowed: false } : await getSelfPayrollEligibility(user.id, role);
 
     const token = createSessionToken({
       id: user.id,
@@ -61,6 +70,7 @@ export async function POST(request: NextRequest) {
           role,
           name: user.name,
           coachId,
+          canViewSelfPayroll: selfPayroll.allowed,
         },
         message: '登录成功'
       },

@@ -50,7 +50,11 @@ export default function SalesPage() {
             <div className="shrink-0 bg-emerald-500 p-2 rounded-lg">
               <Calendar className="w-6 h-6 text-white" />
             </div>
-            <TopNavMenu current="sales" isAdmin={isAdmin} />
+            <TopNavMenu
+              current="sales"
+              isAdmin={isAdmin}
+              showPayroll={isAdmin || !!user?.canViewSelfPayroll}
+            />
           </div>
           <UserInfo />
         </div>

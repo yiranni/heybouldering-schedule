@@ -7,7 +7,7 @@ import {
   calcLessonFeesByCoachForMonth,
   fetchLessonFeeConfig,
 } from "@/app/lib/lessonFee.server";
-import { resolveSalesAccess } from "@/app/lib/salesAccess";
+import { resolvePayrollAccess } from "@/app/lib/payrollSelfAccess.server";
 import { getMonthDateStrBounds } from "@/app/lib/scheduleHours";
 import {
   calcOvertimePay,
@@ -55,9 +55,8 @@ function getMonthRange(month: string): { start: Date; end: Date } {
 
 export async function GET(request: NextRequest) {
   try {
-    const access = await resolveSalesAccess(request);
-    if (!access) return unauthorized("请先登录");
-    if (!access.isAdmin) return forbidden("仅管理员可查看工资计算");
+    const access = await resolvePayrollAccess(request);
+    if (!access) return forbidden("无权查看工资计算");
 
     const month = new URL(request.url).searchParams.get("month") || "";
     if (!isValidMonth(month)) {
@@ -66,13 +65,29 @@ export async function GET(request: NextRequest) {
 
     const { rows: rowsWithStores, stores: storeOptions } = await computePayrollForMonth(month);
 
+    if (access.payrollMode === "self") {
+      const coachId = access.coachId;
+      const myRow = rowsWithStores.find((row) => row.coachId === coachId);
+      return NextResponse.json({
+        month,
+        scope: "self",
+        rows: myRow ? [myRow] : [],
+        stores: storeOptions,
+      });
+    }
+
     return NextResponse.json({
       month,
+      scope: "admin",
       rows: rowsWithStores,
       stores: storeOptions,
       totals: {
         totalLaborCost: round2(
-          rowsWithStores.reduce((sum: number, r: { totalSalary: number }) => sum + r.totalSalary, 0)
+          rowsWithStores.reduce(
+            (sum: number, r: { totalSalary: number; overtimePay: number }) =>
+              sum + r.totalSalary + (r.overtimePay || 0),
+            0
+          )
         ),
       },
     });
@@ -84,9 +99,8 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const access = await resolveSalesAccess(request);
-    if (!access) return unauthorized("请先登录");
-    if (!access.isAdmin) return forbidden("仅管理员可编辑工资计算");
+    const access = await resolvePayrollAccess(request);
+    if (!access || access.payrollMode !== "admin") return forbidden("仅管理员可编辑工资计算");
 
     const body = await request.json();
     const month = String(body?.month || "");

@@ -13,11 +13,11 @@ function getCurrentMonth(): string {
 
 const DEFAULT_PART_TIME_HOURLY_RATE = 20;
 
-export function usePayroll() {
+export function usePayroll(enabled = true) {
   const [month, setMonth] = useState<string>(getCurrentMonth());
   const [rows, setRows] = useState<PayrollRow[]>([]);
   const [stores, setStores] = useState<Pick<Store, 'id' | 'name'>[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,8 +49,12 @@ export function usePayroll() {
   }, [month]);
 
   useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     fetchPayroll();
-  }, [fetchPayroll]);
+  }, [enabled, fetchPayroll]);
 
   const updateRow = useCallback((coachId: string, patch: Partial<Pick<PayrollRow, 'monthHours' | 'hourlyRate' | 'basicSalary'>>) => {
     setRows((prev) =>

@@ -9,7 +9,10 @@ import {
 import { fetchLessonFeeConfig } from "@/app/lib/lessonFee.server";
 import { resolvePrimaryStoreId } from "@/app/lib/payrollStoreAttribution.server";
 import { getLessonRecordMonthDateFilter } from "@/app/lib/scheduleHours";
-import { resolveSalesAccess } from "@/app/lib/salesAccess";
+import {
+  canAccessCoachPayrollDetail,
+  resolvePayrollAccess,
+} from "@/app/lib/payrollSelfAccess.server";
 
 function isValidMonth(month: string): boolean {
   return /^\d{4}-\d{2}$/.test(month);
@@ -27,20 +30,23 @@ function parseStoreIds(searchParams: URLSearchParams): string[] | null {
 
 export async function GET(request: NextRequest) {
   try {
-    const access = await resolveSalesAccess(request);
-    if (!access) return unauthorized("请先登录");
-    if (!access.isAdmin) return forbidden("仅管理员可查看课时费明细");
+    const access = await resolvePayrollAccess(request);
+    if (!access) return forbidden("无权查看课时费明细");
 
     const { searchParams } = new URL(request.url);
     const month = searchParams.get("month") || "";
     const coachId = searchParams.get("coachId") || "";
-    const filterStoreIds = parseStoreIds(searchParams);
+    const filterStoreIds =
+      access.payrollMode === "admin" ? parseStoreIds(searchParams) : null;
 
     if (!isValidMonth(month)) {
       return NextResponse.json({ error: "month 格式应为 YYYY-MM" }, { status: 400 });
     }
     if (!coachId) {
       return NextResponse.json({ error: "coachId 为必填项" }, { status: 400 });
+    }
+    if (!canAccessCoachPayrollDetail(access, coachId)) {
+      return forbidden("仅能查看本人的课时费明细");
     }
 
     const [coach, coachStoreLinks, lessonTypes, savedFeeConfig, lessonRecords] = await Promise.all([

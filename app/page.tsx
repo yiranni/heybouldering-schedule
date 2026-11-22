@@ -441,7 +441,11 @@ export default function RockGymScheduler() {
             <div className="shrink-0 rounded-lg bg-emerald-500 p-2">
               <Calendar className="w-6 h-6 text-white" />
             </div>
-            <TopNavMenu current="schedule" isAdmin={canEdit} />
+            <TopNavMenu
+              current="schedule"
+              isAdmin={canEdit}
+              showPayroll={canEdit || !!user?.canViewSelfPayroll}
+            />
           </div>
 
           <div className="flex items-center justify-between gap-2 rounded-lg border border-slate-700 bg-slate-800 p-1.5 sm:justify-center sm:gap-4">

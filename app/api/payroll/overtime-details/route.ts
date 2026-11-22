@@ -5,7 +5,10 @@ import {
   fetchOvertimeHourlyRate,
   listOvertimeRequestsForCoachMonth,
 } from "@/app/lib/overtime.server";
-import { resolveSalesAccess } from "@/app/lib/salesAccess";
+import {
+  canAccessCoachPayrollDetail,
+  resolvePayrollAccess,
+} from "@/app/lib/payrollSelfAccess.server";
 
 function isValidMonth(month: string): boolean {
   return /^\d{4}-\d{2}$/.test(month);
@@ -13,15 +16,17 @@ function isValidMonth(month: string): boolean {
 
 export async function GET(request: NextRequest) {
   try {
-    const access = await resolveSalesAccess(request);
-    if (!access) return unauthorized("请先登录");
-    if (!access.isAdmin) return forbidden("仅管理员可查看加班明细");
+    const access = await resolvePayrollAccess(request);
+    if (!access) return forbidden("无权查看加班明细");
 
     const params = new URL(request.url).searchParams;
     const month = params.get("month") || "";
     const coachId = params.get("coachId") || "";
     if (!isValidMonth(month) || !coachId) {
       return NextResponse.json({ error: "month 与 coachId 为必填项" }, { status: 400 });
+    }
+    if (!canAccessCoachPayrollDetail(access, coachId)) {
+      return forbidden("仅能查看本人的加班明细");
     }
 
     const [items, hourlyRate] = await Promise.all([

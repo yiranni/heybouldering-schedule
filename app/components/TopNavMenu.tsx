@@ -7,6 +7,8 @@ import { useEffect, useRef, useState } from 'react';
 type TopNavMenuProps = {
   current: 'schedule' | 'sales' | 'payroll' | 'lessons' | 'inventory' | 'employeeAnalytics';
   isAdmin?: boolean;
+  /** 管理员或具备本人工资查看权的员工 */
+  showPayroll?: boolean;
 };
 
 const items: Array<{
@@ -19,14 +21,18 @@ const items: Array<{
   { id: 'sales', label: '销售记录', href: '/sales' },
   { id: 'lessons', label: '课程记录', href: '/lessons' },
   { id: 'inventory', label: '库存管理', href: '/inventory' },
-  { id: 'payroll', label: '工资计算', href: '/payroll', adminOnly: true },
+  { id: 'payroll', label: '工资', href: '/payroll', adminOnly: true },
   { id: 'employeeAnalytics', label: '员工分析', href: '/analytics/employees', adminOnly: true },
 ];
 
-export default function TopNavMenu({ current, isAdmin = false }: TopNavMenuProps) {
+export default function TopNavMenu({ current, isAdmin = false, showPayroll = false }: TopNavMenuProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const visibleItems = items.filter((item) => !item.adminOnly || isAdmin);
+  const visibleItems = items.filter((item) => {
+    if (item.id === "payroll") return isAdmin || showPayroll;
+    if (item.adminOnly) return isAdmin;
+    return true;
+  });
 
   useEffect(() => {
     const onMouseDown = (e: MouseEvent) => {

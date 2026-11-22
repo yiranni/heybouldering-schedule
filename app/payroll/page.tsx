@@ -3,6 +3,7 @@
 import { Calendar, ChevronDown, Clock, List, Plus, Settings, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TopNavMenu from "../components/TopNavMenu";
+import PayrollSelfView from "../components/PayrollSelfView";
 import UserInfo from "../components/UserInfo";
 import OvertimeRequestDialog from "../components/OvertimeRequestDialog";
 import { useAuth } from "../components/AuthGuard";
@@ -111,9 +112,17 @@ function getMonthDateRange(month: string): { startDate: string; endDate: string 
   return { startDate: toDateStr(start), endDate: toDateStr(end) };
 }
 
+function getCurrentMonth(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
 export default function PayrollPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === "ADMIN";
+  const canViewSelfPayroll = user?.canViewSelfPayroll === true;
   const {
     month,
     rows,
@@ -124,7 +133,8 @@ export default function PayrollPage() {
     saveSalaryConfig,
     refreshPayroll,
     savePayroll,
-  } = usePayroll();
+  } = usePayroll(isAdmin);
+  const [selfMonth, setSelfMonth] = useState(getCurrentMonth);
   const { lessonTypes, loading: lessonTypesLoading, refreshLessonTypes } = useLessonTypes();
   const partTimeRows = useMemo(
     () => rows.filter((row) => row.employmentType === "PART_TIME"),
@@ -558,7 +568,15 @@ export default function PayrollPage() {
     }
   };
 
-  if (!isAdmin) {
+  const [selfYearStr, selfMonthStr] = selfMonth.split("-");
+  const selfSelectedYear = Number(selfYearStr);
+  const selfSelectedMonth = Number(selfMonthStr);
+  const selfYearOptions = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    return Array.from({ length: 7 }, (_, idx) => currentYear - 3 + idx);
+  }, []);
+
+  if (!isAdmin && !canViewSelfPayroll) {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
         <header className="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-50">
@@ -567,16 +585,62 @@ export default function PayrollPage() {
               <div className="bg-emerald-500 p-2 rounded-lg">
                 <Calendar className="w-6 h-6 text-white" />
               </div>
-              <TopNavMenu current="schedule" isAdmin={false} />
+              <TopNavMenu current="schedule" isAdmin={false} showPayroll={false} />
             </div>
             <UserInfo />
           </div>
         </header>
         <main className="max-w-4xl mx-auto p-6">
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
-            仅管理员可查看工资计算页面。
+            无权查看工资页面。
           </div>
         </main>
+      </div>
+    );
+  }
+
+  if (!isAdmin && canViewSelfPayroll && !user?.coachId) {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+        <header className="bg-slate-900 text-white p-4 shadow-lg sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <TopNavMenu current="payroll" isAdmin={false} showPayroll />
+            <UserInfo />
+          </div>
+        </header>
+        <main className="max-w-4xl mx-auto p-6">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
+            账号未绑定教练档案，无法查看工资。
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (!isAdmin && canViewSelfPayroll && user?.coachId) {
+    const coachName = user.name?.trim() || user.accountId;
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+        <header className="bg-slate-900 text-white p-3 shadow-lg sticky top-0 z-50 sm:p-4">
+          <div className="mx-auto flex max-w-7xl flex-col items-stretch gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="shrink-0 bg-emerald-500 p-2 rounded-lg">
+                <Calendar className="w-6 h-6 text-white" />
+              </div>
+              <TopNavMenu current="payroll" isAdmin={false} showPayroll />
+            </div>
+            <UserInfo />
+          </div>
+        </header>
+        <PayrollSelfView
+          month={selfMonth}
+          coachId={user.coachId}
+          coachName={coachName}
+          onMonthChange={setSelfMonth}
+          yearOptions={selfYearOptions}
+          selectedYear={selfSelectedYear}
+          selectedMonth={selfSelectedMonth}
+        />
       </div>
     );
   }
@@ -589,7 +653,7 @@ export default function PayrollPage() {
             <div className="shrink-0 bg-emerald-500 p-2 rounded-lg">
               <Calendar className="w-6 h-6 text-white" />
             </div>
-            <TopNavMenu current="payroll" isAdmin />
+            <TopNavMenu current="payroll" isAdmin showPayroll />
           </div>
           <div className="mobile-scrollbar -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:flex-wrap sm:justify-end sm:overflow-visible sm:px-0 sm:pb-0">
             <div className="flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1.5">

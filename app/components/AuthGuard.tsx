@@ -15,6 +15,7 @@ type AuthUser = {
   role: AuthRole;
   name?: string | null;
   coachId?: string | null;
+  canViewSelfPayroll?: boolean;
 };
 
 type AuthContextValue = {
