@@ -267,28 +267,50 @@ export default function PayrollSelfView({
                 ))}
               </div>
             )}
+            {lessonFee?.noviceFreeSummary && (
+              <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div className="font-medium">全职新手课免计</div>
+                <div className="mt-1 text-amber-800">
+                  本月已免计 {lessonFee.noviceFreeSummary.used} / {lessonFee.noviceFreeSummary.quota} 人
+                  （免计课时仍列在下方明细，课时费为 ¥0）
+                </div>
+              </div>
+            )}
             {!lessonFee?.items.length ? (
               <div className="px-4 py-8 text-sm text-slate-400 text-center">暂无课程记录</div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[40rem] text-sm">
                   <thead className="bg-slate-50">
                     <tr>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">日期</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">门店</th>
                       <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">课程</th>
                       <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">人数</th>
+                      <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">免计</th>
+                      <th className="px-3 py-2 text-left text-xs font-semibold text-slate-600">计算方式</th>
                       <th className="px-3 py-2 text-right text-xs font-semibold text-slate-600">课时费</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {lessonFee.items.map((item) => (
-                      <tr key={item.id}>
-                        <td className="px-3 py-2 text-slate-600">{item.dateStr}</td>
-                        <td className="px-3 py-2 text-slate-600">{item.storeName || "—"}</td>
+                      <tr
+                        key={item.id}
+                        className={
+                          item.freeStudentCount > 0 || item.fee === 0
+                            ? "bg-amber-50/60"
+                            : undefined
+                        }
+                      >
+                        <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{item.dateStr}</td>
+                        <td className="px-3 py-2 text-slate-600 whitespace-nowrap">{item.storeName || "—"}</td>
                         <td className="px-3 py-2 text-slate-800">{item.lessonTypeName}</td>
                         <td className="px-3 py-2 text-right text-slate-700">{item.studentCount}</td>
-                        <td className="px-3 py-2 text-right text-emerald-700 font-medium">
+                        <td className="px-3 py-2 text-right text-amber-700 whitespace-nowrap">
+                          {item.freeStudentCount > 0 ? `${item.freeStudentCount} 人` : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-slate-600">{item.calculationNote}</td>
+                        <td className="px-3 py-2 text-right text-emerald-700 font-medium whitespace-nowrap">
                           {formatCurrency(item.fee)}
                         </td>
                       </tr>
